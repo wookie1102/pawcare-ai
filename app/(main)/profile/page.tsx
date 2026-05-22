@@ -266,7 +266,7 @@ export default function ProfilePage() {
                     <div key={key} className="flex items-center gap-1.5 flex-1">
                       <input
                         type="number"
-                        value={(editingPet as Record<string, string>)[key]}
+                        value={(editingPet as Record<string, string | string[]>)[key] as string}
                         onChange={e => setEditingPet(p => ({ ...p!, [key]: e.target.value }))}
                         placeholder={placeholder}
                         min="0"
