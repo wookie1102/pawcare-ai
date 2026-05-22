@@ -8,9 +8,7 @@ import {
   getTodayLog,
   saveHealthLog,
   getRecentAverages,
-  getActivePet,
   type HealthLog,
-  type PetProfile,
 } from '@/lib/storage'
 
 type Tab = 'home' | 'record'
@@ -19,7 +17,6 @@ const VITALITY_LABELS = ['', '매우 처짐', '처짐', '보통', '활발', '매
 
 export default function HomeClient({ displayName }: { displayName: string }) {
   const [tab, setTab] = useState<Tab>('home')
-  const [profile, setProfile] = useState<PetProfile | null>(null)
   const [todayLog, setTodayLog] = useState<HealthLog | null>(null)
   const [averages, setAverages] = useState<ReturnType<typeof getRecentAverages>>({
     breathing: null, water: null, meal: null, vitality: null,
@@ -34,8 +31,6 @@ export default function HomeClient({ displayName }: { displayName: string }) {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    const p = getActivePet()
-    setProfile(p)
     const log = getTodayLog()
     setTodayLog(log)
     if (log) {

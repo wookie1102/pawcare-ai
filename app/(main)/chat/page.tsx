@@ -209,7 +209,7 @@ export default function ChatPage() {
               <p className="text-sm font-semibold text-gray-800 mb-1">🩺 어떤 증상이 있나요?</p>
               <p className="text-xs text-gray-400 mb-4">
                 증상을 자세히 설명해 주실수록 더 정확한 안내가 가능해요.<br />
-                예: "어제부터 기침을 많이 하고 밥을 안 먹어요"
+                예: &quot;어제부터 기침을 많이 하고 밥을 안 먹어요&quot;
               </p>
               <textarea
                 value={symptomText}

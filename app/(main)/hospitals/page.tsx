@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Phone, Clock, MapPin, Star, AlertTriangle, Navigation } from 'lucide-react'
+import { Phone, Clock, MapPin, Star, AlertTriangle } from 'lucide-react'
 import LegalDisclaimer from '@/components/LegalDisclaimer'
 
 type Hospital = {
