@@ -18,7 +18,6 @@ function emptyPet(): PetProfile {
 
 export default function ProfilePage() {
   const router = useRouter()
-  const supabase = createClient()
 
   const [pets, setPets] = useState<PetProfile[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -86,7 +85,7 @@ export default function ProfilePage() {
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut()
+    await createClient().auth.signOut()
     router.push('/login')
     router.refresh()
   }

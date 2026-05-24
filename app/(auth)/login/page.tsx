@@ -21,7 +21,8 @@ function openInExternalBrowser() {
 
   // Android: Chrome intent URL
   if (/Android/.test(ua)) {
-    window.location.href = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(url)};end`
+    const scheme = url.startsWith('https') ? 'https' : 'http'
+    window.location.href = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=${scheme};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(url)};end`
     return
   }
 
@@ -34,7 +35,6 @@ function openInExternalBrowser() {
 
 export default function LoginPage() {
   const router = useRouter()
-  const supabase = createClient()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -49,7 +49,7 @@ export default function LoginPage() {
   }, [])
 
   const handleKakaoLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await createClient().auth.signInWithOAuth({
       provider: 'kakao',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
@@ -61,7 +61,7 @@ export default function LoginPage() {
       openInExternalBrowser()
       return
     }
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await createClient().auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
@@ -72,7 +72,7 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await createClient().auth.signInWithPassword({ email, password })
     if (error) {
       setError('이메일 또는 비밀번호가 올바르지 않습니다.')
       setLoading(false)

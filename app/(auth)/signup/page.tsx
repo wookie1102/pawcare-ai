@@ -6,8 +6,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, AlertCircle } from 'lucide-react'
 
 export default function SignupPage() {
-  const supabase = createClient()
-
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -17,14 +15,14 @@ export default function SignupPage() {
   const [done, setDone] = useState(false)
 
   const handleKakaoLogin = async () => {
-    await supabase.auth.signInWithOAuth({
+    await createClient().auth.signInWithOAuth({
       provider: 'kakao',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
   }
 
   const handleGoogleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
+    await createClient().auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
@@ -35,7 +33,7 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signUp({
+    const { error } = await createClient().auth.signUp({
       email,
       password,
       options: { data: { full_name: name } },
