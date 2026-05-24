@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { Phone, MapPin, AlertTriangle, Loader2, RefreshCw, Navigation, ExternalLink } from 'lucide-react'
+import { Phone, AlertTriangle, Loader2, RefreshCw, Navigation, ExternalLink } from 'lucide-react'
 import LegalDisclaimer from '@/components/LegalDisclaimer'
 
-const LeafletMap = dynamic(() => import('@/components/LeafletMap'), { ssr: false })
+const KakaoMap = dynamic(() => import('@/components/KakaoMap'), { ssr: false })
 
 type KakaoPlace = {
   id: string
@@ -93,7 +93,7 @@ export default function HospitalsPage() {
       {/* 지도 영역 */}
       <div className="relative h-48 bg-gray-100 overflow-hidden">
         {coords ? (
-          <LeafletMap lat={coords.lat} lng={coords.lng} hospitals={places} />
+          <KakaoMap lat={coords.lat} lng={coords.lng} hospitals={places} />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Loader2 className="animate-spin text-green-400" size={24} />

@@ -66,6 +66,7 @@ export default function KakaoMap({ lat, lng, hospitals }: Props) {
     const script = document.createElement('script')
     script.id = 'kakao-sdk'
     script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_KEY}&autoload=false`
+    script.setAttribute('referrerpolicy', 'no-referrer')
     script.onload = initMap
     script.onerror = () => console.error('Kakao Maps SDK 로드 실패')
     document.head.appendChild(script)
