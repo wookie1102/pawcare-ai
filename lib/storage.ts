@@ -51,6 +51,14 @@ export type MedicationCheck = {
   taken: boolean
 }
 
+export type ConsultationMessage = {
+  id: string
+  role: 'ai' | 'user'
+  content: string
+  isResult?: boolean
+  urgency?: 'emergency' | 'caution' | 'watch'
+}
+
 export type ConsultationRecord = {
   id: string
   date: string
@@ -61,6 +69,7 @@ export type ConsultationRecord = {
   urgency: 'emergency' | 'caution' | 'watch'
   behaviorType?: string
   systems?: string[]
+  messages: ConsultationMessage[]
 }
 
 const KEYS = {

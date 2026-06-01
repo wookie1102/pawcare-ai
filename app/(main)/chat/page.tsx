@@ -22,7 +22,7 @@ import {
   type UrgencyLevel,
   type BehaviorType,
 } from '@/lib/chatLogic'
-import { getActivePet, saveConsultation, type PetProfile } from '@/lib/storage'
+import { getActivePet, saveConsultation, type PetProfile, type ConsultationMessage } from '@/lib/storage'
 
 type Step = 'intro' | 'symptom' | 'questioning' | 'result'
 
@@ -57,6 +57,7 @@ export default function ChatPage() {
   const [showSOAP, setShowSOAP] = useState(false)
   const [followUpText, setFollowUpText] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const savedRef = useRef(false)
 
   useEffect(() => {
     setProfile(getActivePet())
@@ -65,6 +66,26 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    if (step === 'result' && messages.length > 0 && !savedRef.current) {
+      savedRef.current = true
+      saveConsultation({
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        petName: profile?.name || '반려동물',
+        petId: profile?.id,
+        mode,
+        symptomText,
+        urgency,
+        behaviorType,
+        systems,
+        messages: messages.map(({ id, role, content, isResult, urgency: u }): ConsultationMessage => ({
+          id, role, content, isResult, urgency: u,
+        })),
+      })
+    }
+  }, [step, messages, profile, mode, symptomText, urgency, behaviorType, systems])
 
   function reset() {
     setStep('intro')
@@ -79,6 +100,7 @@ export default function ChatPage() {
     setBehaviorType('general_behavior')
     setShowSOAP(false)
     setFollowUpText('')
+    savedRef.current = false
   }
 
   function addAiMessage(content: string, opts?: Partial<Message>) {
@@ -119,7 +141,6 @@ export default function ChatPage() {
       })
       setUrgency('emergency')
       setEmergencyStop(true)
-      saveConsultation({ id: Date.now().toString(), date: new Date().toISOString(), petName: profile?.name || '반려동물', petId: profile?.id, mode: 'symptom', symptomText: text, urgency: 'emergency' })
       setStep('result')
       return
     }
@@ -171,7 +192,6 @@ export default function ChatPage() {
         addAiMessage(msg, { isResult: true, urgency: 'emergency' })
         setUrgency('emergency')
         setEmergencyStop(true)
-        saveConsultation({ id: Date.now().toString(), date: new Date().toISOString(), petName: profile?.name || '반려동물', petId: profile?.id, mode: 'symptom', symptomText: symptomText, urgency: 'emergency', systems })
         setStep('result')
       }, 300)
       return
@@ -186,7 +206,6 @@ export default function ChatPage() {
           setTimeout(() => {
             const msg = makeBehaviorResultMessage(behaviorType, profile?.name || '반려동물')
             addAiMessage(msg, { isResult: true, urgency: 'watch' })
-            saveConsultation({ id: Date.now().toString(), date: new Date().toISOString(), petName: profile?.name || '반려동물', petId: profile?.id, mode: 'behavior', symptomText: symptomText, urgency: 'watch', behaviorType })
             setStep('result')
           }, 400)
         }, 300)
@@ -198,7 +217,6 @@ export default function ChatPage() {
           setTimeout(() => {
             const msg = makeResultMessage(finalUrgency, systems, profile?.name || '반려동물')
             addAiMessage(msg, { isResult: true, urgency: finalUrgency })
-            saveConsultation({ id: Date.now().toString(), date: new Date().toISOString(), petName: profile?.name || '반려동물', petId: profile?.id, mode: 'symptom', symptomText: symptomText, urgency: finalUrgency, systems })
             setStep('result')
           }, 400)
         }, 300)
