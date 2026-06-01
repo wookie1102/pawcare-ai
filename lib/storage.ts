@@ -51,12 +51,25 @@ export type MedicationCheck = {
   taken: boolean
 }
 
+export type ConsultationRecord = {
+  id: string
+  date: string
+  petName: string
+  petId?: string
+  mode: 'symptom' | 'behavior'
+  symptomText: string
+  urgency: 'emergency' | 'caution' | 'watch'
+  behaviorType?: string
+  systems?: string[]
+}
+
 const KEYS = {
   PETS: 'pawcare_pets',
   ACTIVE_PET_ID: 'pawcare_active_pet_id',
   HEALTH_LOGS: 'pawcare_health_logs',
   PRESCRIPTIONS: 'pawcare_prescriptions',
   MED_CHECKS: 'pawcare_med_checks',
+  CONSULTATIONS: 'pawcare_consultations',
 }
 
 function safeParse<T>(key: string, fallback: T): T {
@@ -202,4 +215,20 @@ export function setMedCheck(check: MedicationCheck): void {
 export function getTodayChecks(): MedicationCheck[] {
   const today = new Date().toISOString().split('T')[0]
   return getMedChecks().filter(c => c.date === today)
+}
+
+// ── 상담 기록 ────────────────────────────────────────────
+export function getConsultations(): ConsultationRecord[] {
+  return safeParse<ConsultationRecord[]>(KEYS.CONSULTATIONS, [])
+}
+
+export function saveConsultation(record: ConsultationRecord): void {
+  const list = getConsultations()
+  list.unshift(record)
+  if (list.length > 50) list.splice(50)
+  localStorage.setItem(KEYS.CONSULTATIONS, JSON.stringify(list))
+}
+
+export function getRecentConsultations(n = 3): ConsultationRecord[] {
+  return getConsultations().slice(0, n)
 }

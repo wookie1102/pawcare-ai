@@ -8,10 +8,21 @@ import {
   getTodayLog,
   saveHealthLog,
   getRecentAverages,
+  getRecentConsultations,
   type HealthLog,
+  type ConsultationRecord,
 } from '@/lib/storage'
 
 type Tab = 'home' | 'record'
+
+function formatRelativeDate(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const days = Math.floor(diff / 86400000)
+  if (days === 0) return '오늘'
+  if (days === 1) return '어제'
+  if (days < 7) return `${days}일 전`
+  return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+}
 
 const VITALITY_LABELS = ['', '매우 처짐', '처짐', '보통', '활발', '매우 활발']
 
@@ -29,6 +40,7 @@ export default function HomeClient({ displayName }: { displayName: string }) {
     notes: '',
   })
   const [saved, setSaved] = useState(false)
+  const [recentConsultations, setRecentConsultations] = useState<ConsultationRecord[]>([])
 
   useEffect(() => {
     const log = getTodayLog()
@@ -43,6 +55,7 @@ export default function HomeClient({ displayName }: { displayName: string }) {
       })
     }
     setAverages(getRecentAverages())
+    setRecentConsultations(getRecentConsultations(3))
   }, [])
 
   function handleSave() {
@@ -175,12 +188,47 @@ export default function HomeClient({ displayName }: { displayName: string }) {
 
           {/* 최근 상담 */}
           <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <h3 className="font-bold text-gray-800 mb-3 text-sm">최근 상담</h3>
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-              <MessageCircle size={32} className="text-gray-200 mb-3" />
-              <p className="text-gray-400 text-sm">아직 상담 기록이 없어요.</p>
-              <p className="text-gray-400 text-sm">첫 상담을 시작해보세요! 🐾</p>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-gray-800 text-sm">최근 상담</h3>
+              {recentConsultations.length > 0 && (
+                <Link href="/history">
+                  <span className="text-xs text-green-600">전체보기</span>
+                </Link>
+              )}
             </div>
+            {recentConsultations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <MessageCircle size={32} className="text-gray-200 mb-3" />
+                <p className="text-gray-400 text-sm">아직 상담 기록이 없어요.</p>
+                <p className="text-gray-400 text-sm">첫 상담을 시작해보세요! 🐾</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recentConsultations.map(record => (
+                  <div key={record.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div className="text-base mt-0.5">{record.mode === 'behavior' ? '🐾' : '🩺'}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-xs font-semibold text-gray-700">{record.petName}</span>
+                        {record.mode === 'behavior' ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600 font-medium">행동분석</span>
+                        ) : (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                            record.urgency === 'emergency' ? 'bg-red-100 text-red-600' :
+                            record.urgency === 'caution' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-green-100 text-green-600'
+                          }`}>
+                            {record.urgency === 'emergency' ? '긴급' : record.urgency === 'caution' ? '주의' : '관찰'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">{record.symptomText}</p>
+                      <p className="text-[10px] text-gray-300 mt-0.5">{formatRelativeDate(record.date)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -22,7 +22,7 @@ import {
   type UrgencyLevel,
   type BehaviorType,
 } from '@/lib/chatLogic'
-import { getActivePet, type PetProfile } from '@/lib/storage'
+import { getActivePet, saveConsultation, type PetProfile } from '@/lib/storage'
 
 type Step = 'intro' | 'symptom' | 'questioning' | 'result'
 
@@ -119,6 +119,7 @@ export default function ChatPage() {
       })
       setUrgency('emergency')
       setEmergencyStop(true)
+      saveConsultation({ id: Date.now().toString(), date: new Date().toISOString(), petName: profile?.name || '반려동물', petId: profile?.id, mode: 'symptom', symptomText: text, urgency: 'emergency' })
       setStep('result')
       return
     }
@@ -170,6 +171,7 @@ export default function ChatPage() {
         addAiMessage(msg, { isResult: true, urgency: 'emergency' })
         setUrgency('emergency')
         setEmergencyStop(true)
+        saveConsultation({ id: Date.now().toString(), date: new Date().toISOString(), petName: profile?.name || '반려동물', petId: profile?.id, mode: 'symptom', symptomText: symptomText, urgency: 'emergency', systems })
         setStep('result')
       }, 300)
       return
@@ -184,6 +186,7 @@ export default function ChatPage() {
           setTimeout(() => {
             const msg = makeBehaviorResultMessage(behaviorType, profile?.name || '반려동물')
             addAiMessage(msg, { isResult: true, urgency: 'watch' })
+            saveConsultation({ id: Date.now().toString(), date: new Date().toISOString(), petName: profile?.name || '반려동물', petId: profile?.id, mode: 'behavior', symptomText: symptomText, urgency: 'watch', behaviorType })
             setStep('result')
           }, 400)
         }, 300)
@@ -195,6 +198,7 @@ export default function ChatPage() {
           setTimeout(() => {
             const msg = makeResultMessage(finalUrgency, systems, profile?.name || '반려동물')
             addAiMessage(msg, { isResult: true, urgency: finalUrgency })
+            saveConsultation({ id: Date.now().toString(), date: new Date().toISOString(), petName: profile?.name || '반려동물', petId: profile?.id, mode: 'symptom', symptomText: symptomText, urgency: finalUrgency, systems })
             setStep('result')
           }, 400)
         }, 300)
