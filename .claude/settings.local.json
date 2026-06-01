@@ -9,7 +9,8 @@
       "Bash(git commit -m 'feat: Kakao Maps SDK로 지도 교체 \\(HTTPS 환경\\) *)",
       "Bash(git commit -m 'fix: KakaoMap 타이밍 문제 수정 \\(mapReady 상태 추가\\) *)",
       "Bash(git commit -m 'fix: manifest.json 추가, Kakao Maps SDK 루트 레이아웃으로 이동 *)",
-      "Bash(git commit -m 'fix: Leaflet으로 복구, Kakao SDK 제거 *)"
+      "Bash(git commit -m 'fix: Leaflet으로 복구, Kakao SDK 제거 *)",
+      "Bash(git commit *)"
     ]
   }
 }
