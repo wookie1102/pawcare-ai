@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar'
 
 export const metadata: Metadata = {
   title: 'PawCare AI — 반려동물 AI 증상 상담',
@@ -28,8 +29,9 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="antialiased max-w-md mx-auto min-h-screen">
+          <ServiceWorkerRegistrar />
         {children}
-      </body>
+</body>
     </html>
   )
 }
