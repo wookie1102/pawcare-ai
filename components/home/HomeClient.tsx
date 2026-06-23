@@ -8,12 +8,15 @@ import {
   getTodayLog,
   saveHealthLog,
   getRecentAverages,
+  getActivePet,
   type HealthLog,
+  type PetProfile,
 } from '@/lib/storage'
 
 type Tab = 'home' | 'record'
 
 const VITALITY_LABELS = ['', '매우 처짐', '처짐', '보통', '활발', '매우 활발']
+const SPECIES_EMOJI: Record<string, string> = { dog: '🐶', cat: '🐱', other: '🐾' }
 
 export default function HomeClient({ displayName }: { displayName: string }) {
   const [tab, setTab] = useState<Tab>('home')
@@ -29,8 +32,11 @@ export default function HomeClient({ displayName }: { displayName: string }) {
     notes: '',
   })
   const [saved, setSaved] = useState(false)
+  const [activePet, setActivePet] = useState<PetProfile | null>(null)
 
-  useEffect(() => {
+  function loadData() {
+    const pet = getActivePet()
+    setActivePet(pet)
     const log = getTodayLog()
     setTodayLog(log)
     if (log) {
@@ -41,8 +47,16 @@ export default function HomeClient({ displayName }: { displayName: string }) {
         vitality: log.vitality ?? 0,
         notes: log.notes,
       })
+    } else {
+      setForm({ breathingRate: '', waterIntake: '', mealAmount: '', vitality: 0, notes: '' })
     }
     setAverages(getRecentAverages())
+  }
+
+  useEffect(() => {
+    loadData()
+    window.addEventListener('pawcare_pet_updated', loadData)
+    return () => window.removeEventListener('pawcare_pet_updated', loadData)
   }, [])
 
   function handleSave() {
@@ -87,9 +101,14 @@ export default function HomeClient({ displayName }: { displayName: string }) {
           <div>
             <p className="text-gray-500 text-sm">안녕하세요 👋</p>
             <h1 className="text-xl font-bold text-gray-800">{displayName}님</h1>
+            {activePet && (
+              <p className="text-sm text-green-600 font-medium mt-0.5">
+                {activePet.emoji || SPECIES_EMOJI[activePet.species]} {activePet.name} 보호중
+              </p>
+            )}
           </div>
           <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-lg">
-            🐾
+            {activePet?.emoji || activePet ? (SPECIES_EMOJI[activePet.species]) : '🐾'}
           </div>
         </div>
 
