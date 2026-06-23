@@ -17,6 +17,8 @@ import {
   makeBehaviorResultMessage,
   getBehaviorTypeName,
   answerFollowUp,
+  generateOpener,
+  reorderByChiefComplaint,
   type Question,
   type QuestionSystem,
   type UrgencyLevel,
@@ -146,24 +148,17 @@ export default function ChatPage() {
     }
 
     const detectedSystems = detectSystems(text)
+    console.log('[DEBUG] input:', text)
+    console.log('[DEBUG] detectedSystems:', detectedSystems)
     setSystems(detectedSystems)
-    const queue = buildQuestionQueue(detectedSystems, profile)
+    const rawQueue = buildQuestionQueue(detectedSystems, profile)
+    const queue = reorderByChiefComplaint(text, rawQueue)
     setQuestions(queue)
     setQIndex(0)
     setStep('questioning')
 
-    const sysNames: Partial<Record<QuestionSystem, string>> = {
-      respiratory: '호흡기',
-      neurological: '신경계',
-      urinary: '비뇨기',
-      digestive: '소화기',
-      general: '전반적',
-    }
-    const sysLabel = detectedSystems.map(s => sysNames[s]).filter(Boolean).join(', ')
-    const petLabel = profile?.name ? `${profile.name}의 ` : ''
-    addAiMessage(
-      `${petLabel}증상을 파악하기 위해 몇 가지 여쭤볼게요.\n${sysLabel ? `(${sysLabel} 계통 위주로 확인할게요)` : ''}`,
-    )
+    const petName = profile?.name || '반려동물'
+    addAiMessage(generateOpener(text, petName))
 
     setTimeout(() => {
       setMessages(prev => [...prev, {
