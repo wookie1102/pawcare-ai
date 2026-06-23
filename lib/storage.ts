@@ -130,7 +130,8 @@ export function deletePet(id: string): void {
 }
 
 export function getActivePetId(): string | null {
-  return safeParse<string | null>(KEYS.ACTIVE_PET_ID, null)
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(KEYS.ACTIVE_PET_ID)
 }
 
 export function setActivePetId(id: string): void {
