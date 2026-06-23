@@ -148,8 +148,6 @@ export default function ChatPage() {
     }
 
     const detectedSystems = detectSystems(text)
-    console.log('[DEBUG] input:', text)
-    console.log('[DEBUG] detectedSystems:', detectedSystems)
     setSystems(detectedSystems)
     const rawQueue = buildQuestionQueue(detectedSystems, profile)
     const queue = reorderByChiefComplaint(text, rawQueue)
