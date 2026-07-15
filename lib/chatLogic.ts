@@ -295,7 +295,24 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
   ],
 }
 
-export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfile | null): Question[] {
+const COMBINED_VOMIT_DIARRHEA_QUESTIONS: Question[] = [
+  {
+    id: 'dige_combo_vitality',
+    system: 'digestive',
+    text: '구토와 설사가 동시에 있으면 탈수가 빠르게 올 수 있어요. 지금 기운이 어떻게 보이나요?',
+    options: ['비교적 활발해요', '기운이 없어 보여요', '거의 움직이지 않아요', '쓰러져 있어요'],
+    emergencyTriggers: ['거의 움직이지 않아요', '쓰러져 있어요'],
+  },
+  {
+    id: 'dige_combo_dehydrate',
+    system: 'digestive',
+    text: '피부를 살짝 집었다 놓으면 바로 돌아오나요? (탈수 확인)',
+    options: ['바로 돌아와요 (정상)', '천천히 돌아와요 (2초 이상)', '그대로 있어요', '확인 못 했어요'],
+    emergencyTriggers: ['그대로 있어요'],
+  },
+]
+
+export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfile | null, symptomText?: string): Question[] {
   const order: QuestionSystem[] = ['respiratory', 'neurological', 'urinary', 'digestive', 'skin', 'eye', 'ear', 'orthopedic', 'dental', 'lump', 'endocrine', 'general']
   const sorted = [...systems].sort((a, b) => order.indexOf(a) - order.indexOf(b))
 
@@ -310,6 +327,15 @@ export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfil
   }
   if (!systems.includes('general')) {
     questions.push(QUESTION_BANKS.general[0])
+  }
+
+  // 구토 + 설사 동시 감지 시 탈수 체크 질문을 앞에 삽입
+  if (symptomText && systems.includes('digestive')) {
+    const hasVomit = ['구토', '토했', '토를', '토해'].some(kw => symptomText.includes(kw))
+    const hasDiarrhea = symptomText.includes('설사')
+    if (hasVomit && hasDiarrhea) {
+      questions.unshift(...COMBINED_VOMIT_DIARRHEA_QUESTIONS)
+    }
   }
 
   // 신부전이면 탈수 확인 질문 맨 앞에 삽입
@@ -340,7 +366,7 @@ export function assessUrgency(questions: Question[], answers: Record<string, str
     '창백하거나 흰색이에요', '많이 헐떡거려요', '몸을 심하게 떨었어요', '비틀거리거나 쓰러졌어요',
     '찔끔씩 나와요', '소변에 피가 섞여요', '소변량이 줄었어요', '어제부터예요', '2~3일 됐어요',
     '하루 3~5회', '거의 안 먹어요', '아예 안 먹어요', '많이 축 처져요',
-    '천천히 돌아와요 (2초 이상)',
+    '천천히 돌아와요 (2초 이상)', '기운이 없어 보여요',
     // 피부
     '빨갛게 부어있어요', '털이 빠지거나 벗겨져요', '오래됐는데 점점 심해져요',
     // 눈
@@ -768,6 +794,14 @@ const COMPLAINT_OPENERS: Array<{ keywords: string[]; opener: (name: string) => s
 
 export function generateOpener(text: string, petName: string): string {
   const name = petName || '반려동물'
+
+  // 복합 증상 조합을 개별 키워드보다 먼저 체크
+  const hasVomit = ['구토', '토했', '토를', '토해'].some(kw => text.includes(kw))
+  const hasDiarrhea = text.includes('설사')
+  if (hasVomit && hasDiarrhea) {
+    return `${name}이(가) 구토와 설사를 동시에 하고 있군요. 두 증상이 함께 있으면 탈수가 빠르게 올 수 있어서 꼼꼼히 확인해볼게요.`
+  }
+
   for (const { keywords, opener } of COMPLAINT_OPENERS) {
     if (keywords.some(kw => text.includes(kw))) return opener(name)
   }

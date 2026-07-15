@@ -149,7 +149,7 @@ export default function ChatPage() {
 
     const detectedSystems = detectSystems(text)
     setSystems(detectedSystems)
-    const rawQueue = buildQuestionQueue(detectedSystems, profile)
+    const rawQueue = buildQuestionQueue(detectedSystems, profile, text)
     const queue = reorderByChiefComplaint(text, rawQueue)
     setQuestions(queue)
     setQIndex(0)
