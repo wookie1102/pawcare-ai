@@ -8,7 +8,9 @@ export type Question = {
   system: QuestionSystem
   text: string
   options: string[]
-  emergencyTriggers?: string[]
+  emergencyTriggers?: string[]   // 즉시 종료 (생사 응급만)
+  urgencySignals?: string[]      // 심각도 기록 후 질문 계속 진행
+  cautionSignals?: string[]      // 주의 수준 기록
 }
 
 const RESPIRATORY_KW = ['기침', '호흡', '숨', '헐떡', '코피', '재채기', '청색', '파란', '쌕쌕', '캑캑', '그르렁']
@@ -58,53 +60,97 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       text: '잇몸이나 혀 색깔이 어떻게 보이나요?',
       options: ['분홍색이에요 (정상)', '창백하거나 흰색이에요', '파랗거나 보라색이에요', '잘 모르겠어요'],
       emergencyTriggers: ['파랗거나 보라색이에요'],
+      urgencySignals: ['창백하거나 흰색이에요'],
     },
     {
       id: 'resp_effort',
       system: 'respiratory',
-      text: '호흡은 어떤 상태인가요?',
+      text: '지금 호흡 상태가 어떤가요?',
       options: ['조금 빠른 편이에요', '많이 헐떡거려요', '배까지 움직이며 숨 쉬어요', '입으로 숨 쉬어요'],
-      emergencyTriggers: ['배까지 움직이며 숨 쉬어요', '입으로 숨 쉬어요'],
+      urgencySignals: ['배까지 움직이며 숨 쉬어요', '입으로 숨 쉬어요'],
     },
     {
       id: 'resp_sleep_rate',
       system: 'respiratory',
       text: '잠자는 동안 1분간 숨 쉬는 횟수를 세어보셨나요? (정상: 분당 30회 이하)',
-      options: ['세어보니 30회 이하예요 (정상)', '30~40회 정도예요', '40회 이상이에요', '아직 세어보지 않았어요'],
-      emergencyTriggers: ['40회 이상이에요'],
+      options: ['30회 이하예요 (정상)', '30~40회 정도예요', '40회 이상이에요', '아직 세어보지 않았어요'],
+      urgencySignals: ['40회 이상이에요'],
     },
     {
       id: 'resp_cough_type',
       system: 'respiratory',
       text: '기침이 어떤 형태인가요?',
       options: ['마른 기침이에요', '가래가 끓는 듯한 기침이에요', '기침 후 구토해요', '기침은 없고 호흡만 이상해요'],
+      urgencySignals: ['가래가 끓는 듯한 기침이에요'],
     },
     {
       id: 'resp_when',
       system: 'respiratory',
       text: '호흡 증상이 언제 더 심해지나요?',
       options: ['밤이나 새벽에 심해요', '운동 후에 심해요', '항상 비슷해요', '자다가 갑자기 깨요'],
-      emergencyTriggers: ['자다가 갑자기 깨요'],
+      urgencySignals: ['자다가 갑자기 깨요', '밤이나 새벽에 심해요'],
     },
     {
       id: 'resp_heart_hx',
       system: 'respiratory',
       text: '심장병 진단을 받은 적 있나요?',
       options: ['네, 심장약 복용 중이에요', '심장병은 있는데 약은 없어요', '없어요', '모르겠어요'],
+      urgencySignals: ['심장병은 있는데 약은 없어요'],
     },
     {
       id: 'resp_duration',
       system: 'respiratory',
       text: '이 증상이 얼마나 됐나요?',
       options: ['오늘 갑자기 시작됐어요', '2~3일 됐어요', '1~2주 됐어요', '1개월 이상이에요'],
-      emergencyTriggers: ['오늘 갑자기 시작됐어요'],
+      urgencySignals: ['오늘 갑자기 시작됐어요'],
     },
     {
       id: 'resp_nasal',
       system: 'respiratory',
       text: '코 분비물이나 재채기가 있나요?',
       options: ['맑은 콧물이 나요', '노랗거나 탁한 콧물이에요', '코피가 났어요', '없어요'],
-      emergencyTriggers: ['코피가 났어요'],
+      urgencySignals: ['코피가 났어요', '노랗거나 탁한 콧물이에요'],
+    },
+    {
+      id: 'resp_sound',
+      system: 'respiratory',
+      text: '호흡할 때 소리가 나나요?',
+      options: ['그르렁거리는 소리가 나요', '쌕쌕거리는 소리가 나요', '깊고 힘든 소리예요', '소리는 없어요'],
+      urgencySignals: ['그르렁거리는 소리가 나요'],
+    },
+    {
+      id: 'resp_activity',
+      system: 'respiratory',
+      text: '최근 운동이나 산책량이 줄었나요?',
+      options: ['많이 줄었어요 (쉽게 지쳐요)', '조금 줄었어요', '비슷해요', '원래 운동을 안 해요'],
+      urgencySignals: ['많이 줄었어요 (쉽게 지쳐요)'],
+    },
+    {
+      id: 'resp_diuretic',
+      system: 'respiratory',
+      text: '이뇨제(라식스 등)를 복용 중인가요?',
+      options: ['네, 복용 중이에요', '최근 중단했어요', '복용한 적 없어요', '모르겠어요'],
+      urgencySignals: ['최근 중단했어요'],
+    },
+    {
+      id: 'resp_ascites',
+      system: 'respiratory',
+      text: '배가 부풀어 오르거나 복수가 찬 적이 있나요?',
+      options: ['지금 배가 불러요', '이전에 복수 빼는 처치를 받은 적 있어요', '없어요', '모르겠어요'],
+      urgencySignals: ['지금 배가 불러요', '이전에 복수 빼는 처치를 받은 적 있어요'],
+    },
+    {
+      id: 'resp_appetite',
+      system: 'respiratory',
+      text: '식욕은 어떤가요?',
+      options: ['잘 먹어요', '평소보다 줄었어요', '거의 안 먹어요', '전혀 안 먹어요'],
+      urgencySignals: ['거의 안 먹어요', '전혀 안 먹어요'],
+    },
+    {
+      id: 'resp_contact',
+      system: 'respiratory',
+      text: '최근 다른 동물과 접촉한 적 있나요? (전염 가능성 확인)',
+      options: ['최근 접촉 있어요', '없어요', '애견 카페·호텔 이용했어요', '모르겠어요'],
     },
   ],
   neurological: [
@@ -112,42 +158,92 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       id: 'neuro_type',
       system: 'neurological',
       text: '어떤 증상이 나타났나요?',
-      options: ['전신 경련·발작이에요', '한쪽으로 기울거나 빙빙 돌아요 (전정)', '비틀거리거나 걷기 어려워요', '의식을 잃었어요'],
-      emergencyTriggers: ['전신 경련·발작이에요', '의식을 잃었어요'],
+      options: ['전신 경련·발작이에요', '한쪽으로 기울거나 빙빙 돌아요', '비틀거리거나 걷기 어려워요', '의식을 잃었어요'],
+      emergencyTriggers: ['의식을 잃었어요'],
+      urgencySignals: ['전신 경련·발작이에요'],
+    },
+    {
+      id: 'neuro_now',
+      system: 'neurological',
+      text: '지금 이 순간 증상이 진행 중인가요?',
+      options: ['지금도 발작 중이에요', '방금 끝났어요 (10분 이내)', '멈췄어요 (30분 이상 됐어요)', '완전히 정상으로 돌아왔어요'],
+      emergencyTriggers: ['지금도 발작 중이에요'],
+      urgencySignals: ['방금 끝났어요 (10분 이내)'],
     },
     {
       id: 'neuro_duration',
       system: 'neurological',
       text: '증상이 얼마나 지속됐나요?',
       options: ['5분 미만이에요', '5~30분이에요', '30분 이상이에요', '계속 반복돼요'],
-      emergencyTriggers: ['5~30분이에요', '30분 이상이에요', '계속 반복돼요'],
+      urgencySignals: ['5~30분이에요', '30분 이상이에요', '계속 반복돼요'],
     },
     {
       id: 'neuro_after',
       system: 'neurological',
       text: '증상 직후 상태는 어떤가요?',
       options: ['바로 정상으로 돌아왔어요', '멍하거나 비틀거려요 (수분 내)', '몇 시간째 이상해요', '아직 회복 못 했어요'],
-      emergencyTriggers: ['아직 회복 못 했어요'],
+      urgencySignals: ['아직 회복 못 했어요', '몇 시간째 이상해요'],
     },
     {
       id: 'neuro_first',
       system: 'neurological',
       text: '이런 증상이 처음인가요?',
       options: ['처음이에요', '이전에도 있었어요 (6개월 이상 전)', '최근 반복되고 있어요 (월 1회 이상)', '점점 잦아지고 있어요'],
-      emergencyTriggers: ['점점 잦아지고 있어요'],
+      urgencySignals: ['점점 잦아지고 있어요', '최근 반복되고 있어요 (월 1회 이상)'],
+    },
+    {
+      id: 'neuro_head_tilt',
+      system: 'neurological',
+      text: '머리가 한쪽으로 기울어져 있나요?',
+      options: ['네, 한쪽으로 기울어져 있어요', '눈이 흔들려요 (안진)', '둘 다 있어요', '없어요'],
+      urgencySignals: ['둘 다 있어요', '눈이 흔들려요 (안진)'],
+    },
+    {
+      id: 'neuro_walk',
+      system: 'neurological',
+      text: '걸을 수 있나요?',
+      options: ['전혀 못 걸어요', '비틀거리지만 걸어요', '한쪽 다리를 질질 끌어요', '거의 정상이에요'],
+      urgencySignals: ['전혀 못 걸어요'],
+    },
+    {
+      id: 'neuro_neck',
+      system: 'neurological',
+      text: '목이 아파 보이거나 고개를 숙이나요?',
+      options: ['목을 움직이기 싫어해요', '고개를 완전히 못 들어요', '만지면 아파해요', '괜찮아 보여요'],
+      urgencySignals: ['고개를 완전히 못 들어요'],
+    },
+    {
+      id: 'neuro_epilepsy_hx',
+      system: 'neurological',
+      text: '뇌전증(간질) 진단을 받은 적 있나요?',
+      options: ['네, 항경련제 복용 중이에요', '진단받았지만 약은 없어요', '진단받은 적 없어요', '모르겠어요'],
+      urgencySignals: ['진단받았지만 약은 없어요'],
+    },
+    {
+      id: 'neuro_med_change',
+      system: 'neurological',
+      text: '최근 약을 바꾸거나 빠뜨린 적 있나요?',
+      options: ['약을 며칠 건너뜀', '용량이 바뀌었어요', '새 약이 추가됐어요', '변화 없어요'],
+      urgencySignals: ['약을 며칠 건너뜀'],
+    },
+    {
+      id: 'neuro_pain_response',
+      system: 'neurological',
+      text: '발바닥을 꼬집으면 반응하나요? (통증 반응 확인)',
+      options: ['반응해요 (발을 빼요)', '약하게 반응해요', '반응이 없어요', '확인 못 했어요'],
+      urgencySignals: ['약하게 반응해요', '반응이 없어요'],
     },
     {
       id: 'neuro_video',
       system: 'neurological',
       text: '발작·경련 영상을 촬영하셨나요?',
-      options: ['촬영했어요', '촬영 못 했어요', '이미 끝났어요', '지금도 증상이 있어요'],
-      emergencyTriggers: ['지금도 증상이 있어요'],
+      options: ['촬영했어요', '촬영 못 했어요', '이미 끝났어요', '모르겠어요'],
     },
     {
-      id: 'neuro_meds',
+      id: 'neuro_trigger',
       system: 'neurological',
-      text: '현재 복용 중인 약이 있나요?',
-      options: ['항경련제 복용 중이에요', '다른 약을 먹고 있어요', '없어요', '잘 모르겠어요'],
+      text: '발작 전 특이한 행동(조짐)이 있었나요?',
+      options: ['갑자기 멍하니 있었어요', '침을 흘리거나 입 주변을 씹었어요', '특이한 행동 없었어요', '보지 못했어요'],
     },
   ],
   urinary: [
@@ -157,46 +253,83 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       text: '소변을 어떻게 보고 있나요?',
       options: ['소변을 아예 못 봐요', '찔끔씩 자주 시도해요', '소변에 피가 섞여요', '소변량이 많이 줄었어요'],
       emergencyTriggers: ['소변을 아예 못 봐요'],
+      urgencySignals: ['찔끔씩 자주 시도해요'],
+    },
+    {
+      id: 'uri_last_time',
+      system: 'urinary',
+      text: '마지막으로 소변 본 게 언제예요?',
+      options: ['12시간 이상 됐어요', '6~12시간 됐어요', '몇 시간 이내예요', '모르겠어요'],
+      urgencySignals: ['12시간 이상 됐어요'],
     },
     {
       id: 'uri_color',
       system: 'urinary',
       text: '소변 색깔이 어떤가요?',
       options: ['노란색 (정상)', '빨갛거나 분홍색이에요', '갈색이나 진한 색이에요', '확인 못 했어요'],
-      emergencyTriggers: ['빨갛거나 분홍색이에요', '갈색이나 진한 색이에요'],
+      urgencySignals: ['빨갛거나 분홍색이에요', '갈색이나 진한 색이에요'],
     },
     {
       id: 'uri_pain',
       system: 'urinary',
       text: '소변 볼 때 통증 신호가 있나요?',
       options: ['울거나 끙끙거려요', '자세가 이상해 보여요', '배를 핥아요', '특별한 신호 없어요'],
-      emergencyTriggers: ['울거나 끙끙거려요'],
+      urgencySignals: ['울거나 끙끙거려요'],
     },
     {
       id: 'uri_freq',
       system: 'urinary',
       text: '소변 횟수가 어떻게 달라졌나요?',
       options: ['평소보다 훨씬 자주 봐요', '평소와 비슷해요', '평소보다 훨씬 줄었어요', '거의 못 보고 있어요'],
-      emergencyTriggers: ['거의 못 보고 있어요'],
+      urgencySignals: ['거의 못 보고 있어요', '평소보다 훨씬 줄었어요'],
     },
     {
       id: 'uri_drink',
       system: 'urinary',
       text: '물은 평소보다 많이 마시나요?',
       options: ['평소보다 훨씬 많이 마셔요', '비슷하게 마셔요', '오히려 적게 마셔요', '잘 모르겠어요'],
+      urgencySignals: ['오히려 적게 마셔요'],
     },
     {
       id: 'uri_kidney_hx',
       system: 'urinary',
       text: '신장(콩팥) 관련 진단을 받은 적 있나요?',
       options: ['신부전 진단받고 관리 중이에요', '혈액검사에서 수치 이상이 나온 적 있어요', '없어요', '모르겠어요'],
+      urgencySignals: ['신부전 진단받고 관리 중이에요'],
+    },
+    {
+      id: 'uri_sub_fluid',
+      system: 'urinary',
+      text: '피하수액을 맞고 있나요?',
+      options: ['병원에서 맞고 있어요', '집에서 직접 놔요', '예전에 맞았지만 지금은 안 해요', '맞은 적 없어요'],
+    },
+    {
+      id: 'uri_phosphorus',
+      system: 'urinary',
+      text: '최근 혈액검사에서 인(P) 수치를 확인했나요?',
+      options: ['인 수치가 높다고 했어요', '정상 범위라고 했어요', '검사 안 했어요', '모르겠어요'],
+      urgencySignals: ['인 수치가 높다고 했어요'],
+    },
+    {
+      id: 'uri_bp',
+      system: 'urinary',
+      text: '혈압 측정을 해보셨나요?',
+      options: ['혈압이 높다고 했어요', '정상이라고 했어요', '측정 안 했어요', '모르겠어요'],
+      urgencySignals: ['혈압이 높다고 했어요'],
+    },
+    {
+      id: 'uri_vitality',
+      system: 'urinary',
+      text: '전체적인 기운이 어떤가요?',
+      options: ['비교적 정상이에요', '무기력하고 처져요', '거의 움직이지 않아요', '구토나 식욕 저하도 있어요'],
+      urgencySignals: ['거의 움직이지 않아요', '구토나 식욕 저하도 있어요'],
     },
     {
       id: 'uri_duration',
       system: 'urinary',
       text: '이 증상이 얼마나 됐나요?',
       options: ['오늘부터예요', '어제부터예요', '2~3일 됐어요', '1주일 이상이에요'],
-      emergencyTriggers: ['어제부터예요', '2~3일 됐어요'],
+      urgencySignals: ['오늘부터예요', '어제부터예요'],
     },
   ],
   digestive: [
@@ -205,18 +338,20 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'digestive',
       text: '증상이 언제부터 시작됐나요?',
       options: ['오늘 갑자기 시작됐어요', '어제부터예요', '2~3일 됐어요', '1주일 이상이에요'],
+      urgencySignals: ['오늘 갑자기 시작됐어요'],
     },
     {
       id: 'dige_freq',
       system: 'digestive',
       text: '구토나 설사를 얼마나 자주 하나요?',
       options: ['한 번만 했어요', '하루 1~2회', '하루 3~5회', '하루 6회 이상'],
+      urgencySignals: ['하루 6회 이상', '하루 3~5회'],
     },
     {
       id: 'dige_vomit_timing',
       system: 'digestive',
       text: '구토가 언제 일어나나요? (구토가 없으면 마지막 선택)',
-      options: ['밥 먹은 직후 바로 토해요', '밥 먹고 1시간 이상 지나서 토해요', '빈속에(공복에) 토해요', '구토는 없어요'],
+      options: ['밥 먹은 직후 바로 토해요', '밥 먹고 1시간 이상 지나서 토해요', '빈속에 토해요', '구토는 없어요'],
     },
     {
       id: 'dige_vomit_type',
@@ -225,53 +360,81 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       options: ['먹은 음식이 나와요', '노랗거나 거품 같아요 (담즙)', '흰 거품이나 침이에요', '구토는 없어요'],
     },
     {
-      id: 'dige_stool',
-      system: 'digestive',
-      text: '대변 상태는 어떤가요?',
-      options: ['정상이에요', '묽거나 죽처럼 풀어져요', '물처럼 흘러요', '대변을 못 봤어요'],
-    },
-    {
-      id: 'dige_stool_color',
-      system: 'digestive',
-      text: '대변 색깔이 어떤가요? (설사가 없으면 마지막 선택)',
-      options: ['갈색 (정상)', '검은색이에요 (타르 같아요)', '선홍색 피가 섞여요', '노랗거나 회색이에요'],
-    },
-    {
       id: 'dige_blood',
       system: 'digestive',
       text: '구토물이나 대변에 피가 섞여 있나요?',
       options: ['둘 다 없어요', '구토에 피가 보여요', '대변에 피가 섞여요', '확인하기 어려워요'],
+      urgencySignals: ['구토에 피가 보여요', '대변에 피가 섞여요'],
+    },
+    {
+      id: 'dige_stool',
+      system: 'digestive',
+      text: '대변 상태는 어떤가요?',
+      options: ['정상이에요', '묽거나 죽처럼 풀어져요', '물처럼 흘러요', '대변을 못 봤어요'],
+      urgencySignals: ['물처럼 흘러요'],
+    },
+    {
+      id: 'dige_stool_color',
+      system: 'digestive',
+      text: '대변 색깔이 어떤가요?',
+      options: ['갈색 (정상)', '검은색이에요 (타르 같아요)', '선홍색 피가 섞여요', '노랗거나 회색이에요'],
+      urgencySignals: ['검은색이에요 (타르 같아요)', '선홍색 피가 섞여요'],
     },
     {
       id: 'dige_eat',
       system: 'digestive',
       text: '밥과 물을 먹고 있나요?',
       options: ['잘 먹고 마셔요', '물만 조금 마셔요', '거의 안 먹어요', '아무것도 안 먹어요'],
+      urgencySignals: ['아무것도 안 먹어요', '거의 안 먹어요'],
     },
     {
       id: 'dige_vitality',
       system: 'digestive',
-      text: '구토/설사 후 기운이 어떻게 보이나요?',
+      text: '지금 기운이 어떻게 보이나요?',
       options: ['비교적 정상이에요', '조금 처져 있어요', '많이 축 처지고 무기력해요', '쓰러지거나 일어나지 못해요'],
       emergencyTriggers: ['쓰러지거나 일어나지 못해요'],
-    },
-    {
-      id: 'dige_fever',
-      system: 'digestive',
-      text: '몸이 평소보다 뜨겁게 느껴지나요? (발열 확인)',
-      options: ['체온이 정상이에요 (38~39℃)', '약간 따뜻한 것 같아요', '뜨겁게 느껴져요', '모르겠어요'],
-    },
-    {
-      id: 'dige_cause',
-      system: 'digestive',
-      text: '최근에 바뀐 게 있었나요?',
-      options: ['새로운 음식이나 간식을 줬어요', '뭔가를 삼켰을 수 있어요', '스트레스 상황이 있었어요', '특별히 바뀐 건 없어요'],
+      urgencySignals: ['많이 축 처지고 무기력해요'],
     },
     {
       id: 'dige_abdomen',
       system: 'digestive',
       text: '배를 살짝 눌러보면 어떻게 반응하나요?',
       options: ['아파하지 않아요', '약간 긴장하거나 피해요', '많이 아파해요', '배가 빵빵하게 부풀어 있어요'],
+      urgencySignals: ['많이 아파해요', '배가 빵빵하게 부풀어 있어요'],
+    },
+    {
+      id: 'dige_foreign',
+      system: 'digestive',
+      text: '이물질(장난감·뼈·비닐 등)을 삼켰을 가능성이 있나요?',
+      options: ['삼킨 것 같아요', '모르겠어요', '없어요', '뭔가 이상한 걸 먹었어요'],
+      urgencySignals: ['삼킨 것 같아요'],
+    },
+    {
+      id: 'dige_fever',
+      system: 'digestive',
+      text: '몸이 평소보다 뜨겁게 느껴지나요?',
+      options: ['체온이 정상이에요 (38~39℃)', '약간 따뜻한 것 같아요', '뜨겁게 느껴져요', '모르겠어요'],
+      urgencySignals: ['뜨겁게 느껴져요'],
+    },
+    {
+      id: 'dige_pancreas_hx',
+      system: 'digestive',
+      text: '췌장염 진단을 받은 적 있나요?',
+      options: ['네, 있어요', '의심받은 적 있어요', '없어요', '모르겠어요'],
+      urgencySignals: ['네, 있어요'],
+    },
+    {
+      id: 'dige_weight',
+      system: 'digestive',
+      text: '최근 체중이 줄었나요?',
+      options: ['많이 줄었어요 (1kg 이상)', '조금 줄었어요', '변화 없어요', '모르겠어요'],
+      urgencySignals: ['많이 줄었어요 (1kg 이상)'],
+    },
+    {
+      id: 'dige_cause',
+      system: 'digestive',
+      text: '최근에 바뀐 게 있었나요?',
+      options: ['새로운 음식이나 간식을 줬어요', '스트레스 상황이 있었어요', '특별히 바뀐 건 없어요', '모르겠어요'],
     },
   ],
   general: [
@@ -280,13 +443,48 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'general',
       text: '증상이 시작된 지 얼마나 됐나요?',
       options: ['오늘 갑자기 생겼어요', '2~3일 됐어요', '1주일 정도 됐어요', '1개월 이상이에요'],
+      urgencySignals: ['오늘 갑자기 생겼어요'],
     },
     {
       id: 'gen_vitality',
       system: 'general',
       text: '전체적인 활기는 어떤가요?',
       options: ['평소와 비슷해요', '조금 처져 있어요', '많이 축 처져요', '거의 움직이지 않아요'],
-      emergencyTriggers: ['거의 움직이지 않아요'],
+      urgencySignals: ['거의 움직이지 않아요', '많이 축 처져요'],
+    },
+    {
+      id: 'gen_eat',
+      system: 'general',
+      text: '밥과 물을 잘 먹고 있나요?',
+      options: ['평소처럼 잘 먹어요', '조금 줄었어요', '거의 안 먹어요', '전혀 안 먹어요'],
+      urgencySignals: ['전혀 안 먹어요', '거의 안 먹어요'],
+    },
+    {
+      id: 'gen_weight',
+      system: 'general',
+      text: '최근 체중 변화가 있나요?',
+      options: ['많이 빠졌어요', '조금 빠졌어요', '변화 없어요', '모르겠어요'],
+      urgencySignals: ['많이 빠졌어요'],
+    },
+    {
+      id: 'gen_fever',
+      system: 'general',
+      text: '체온을 재보셨나요? (정상: 38~39℃)',
+      options: ['39.5℃ 이상이에요 (고열)', '38~39.5℃예요 (정상~약간 높음)', '38℃ 미만이에요 (저체온)', '재지 않았어요'],
+      urgencySignals: ['39.5℃ 이상이에요 (고열)', '38℃ 미만이에요 (저체온)'],
+    },
+    {
+      id: 'gen_medication',
+      system: 'general',
+      text: '현재 복용 중인 약이 있나요?',
+      options: ['여러 가지 약을 먹고 있어요', '한 가지 약을 먹고 있어요', '없어요', '최근 새로운 약을 시작했어요'],
+      urgencySignals: ['최근 새로운 약을 시작했어요'],
+    },
+    {
+      id: 'gen_hospital_hx',
+      system: 'general',
+      text: '이 증상으로 병원을 가본 적 있나요?',
+      options: ['이번 증상으로 아직 안 갔어요', '갔는데 진단이 안 나왔어요', '치료 중이에요', '이전에 같은 증상으로 간 적 있어요'],
     },
   ],
   skin: [
@@ -297,24 +495,72 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       options: ['얼굴·귀 주변', '배, 겨드랑이', '발바닥·발 사이', '등·꼬리 부근'],
     },
     {
+      id: 'skin_multi',
+      system: 'skin',
+      text: '증상이 온몸에 퍼져 있나요, 특정 부위에만 있나요?',
+      options: ['온몸에 퍼져 있어요', '여러 군데 있어요', '특정 부위에만 있어요', '계속 번지고 있어요'],
+      urgencySignals: ['온몸에 퍼져 있어요', '계속 번지고 있어요'],
+    },
+    {
       id: 'skin_look',
       system: 'skin',
       text: '피부 상태가 어떻게 보이나요?',
       options: ['빨갛게 부어있어요', '털이 빠지거나 벗겨져요', '딱지나 상처가 생겼어요', '겉으로는 정상이에요'],
-      emergencyTriggers: ['딱지나 상처가 생겼어요'],
+      urgencySignals: ['딱지나 상처가 생겼어요'],
+    },
+    {
+      id: 'skin_secondary',
+      system: 'skin',
+      text: '2차 감염 징후가 있나요?',
+      options: ['고름이나 진물이 나와요', '피부가 두꺼워지거나 색이 변했어요', '상처가 잘 낫지 않아요', '없어요'],
+      urgencySignals: ['고름이나 진물이 나와요'],
     },
     {
       id: 'skin_onset',
       system: 'skin',
       text: '증상이 언제부터, 어떻게 시작됐나요?',
       options: ['갑자기 시작됐어요', '특정 계절에만 심해요', '오래됐는데 점점 심해져요', '새 간식·사료 바꾼 뒤 시작됐어요'],
+      urgencySignals: ['오래됐는데 점점 심해져요'],
     },
     {
       id: 'skin_smell',
       system: 'skin',
       text: '피부나 털에서 냄새가 나나요?',
       options: ['퀴퀴하거나 기름진 냄새가 나요', '고름 냄새가 나요', '특별한 냄새 없어요', '잘 모르겠어요'],
-      emergencyTriggers: ['고름 냄새가 나요'],
+      urgencySignals: ['고름 냄새가 나요'],
+    },
+    {
+      id: 'skin_allergy_hx',
+      system: 'skin',
+      text: '알레르기나 아토피 진단을 받은 적 있나요?',
+      options: ['알레르기 진단 있어요', '음식 알레르기가 있어요', '없어요', '의심은 되는데 진단은 못 받았어요'],
+    },
+    {
+      id: 'skin_parasite',
+      system: 'skin',
+      text: '기생충 예방약(벼룩·진드기)을 정기적으로 사용 중인가요?',
+      options: ['정기적으로 사용해요', '가끔 사용해요', '사용 안 해요', '최근 중단했어요'],
+      urgencySignals: ['사용 안 해요', '최근 중단했어요'],
+    },
+    {
+      id: 'skin_steroid',
+      system: 'skin',
+      text: '스테로이드나 면역억제제를 복용 중인가요?',
+      options: ['스테로이드 복용 중이에요', '면역억제제 복용 중이에요', '없어요', '최근 중단했어요'],
+    },
+    {
+      id: 'skin_scratch_freq',
+      system: 'skin',
+      text: '얼마나 자주 긁거나 핥나요?',
+      options: ['하루 종일 거의 멈추지 않아요', '자주 긁어요 (하루 수십 번)', '가끔 긁어요', '수면 중에도 긁어요'],
+      urgencySignals: ['하루 종일 거의 멈추지 않아요'],
+    },
+    {
+      id: 'skin_treatment',
+      system: 'skin',
+      text: '이 증상으로 병원 치료를 받아본 적 있나요?',
+      options: ['치료 중이에요', '치료했는데 재발했어요', '아직 안 갔어요', '자가 치료 중이에요'],
+      urgencySignals: ['치료했는데 재발했어요'],
     },
   ],
   eye: [
@@ -323,42 +569,76 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'eye',
       text: '눈 상태가 어떻게 보이나요?',
       options: ['눈곱이 많이 껴요', '눈이 충혈됐어요', '눈이 뿌옇게 변했어요', '눈이 부어있거나 돌출됐어요'],
-      emergencyTriggers: ['눈이 부어있거나 돌출됐어요'],
+      urgencySignals: ['눈이 부어있거나 돌출됐어요'],
     },
     {
       id: 'eye_behave',
       system: 'eye',
       text: '눈을 어떻게 하나요?',
-      options: ['계속 비벼요', '계속 감고 있어요', '눈물이 많이 나요', '평소와 비슷해요'],
-      emergencyTriggers: ['계속 감고 있어요'],
+      options: ['계속 비벼요', '눈을 잘 못 떠요 (계속 감아요)', '눈물이 많이 나요', '평소와 비슷해요'],
+      urgencySignals: ['눈을 잘 못 떠요 (계속 감아요)'],
     },
     {
       id: 'eye_discharge',
       system: 'eye',
       text: '눈 분비물이 있다면 어떤 색인가요?',
       options: ['맑거나 투명해요', '노랗거나 초록색이에요', '갈색이나 진해요', '없어요'],
-      emergencyTriggers: ['노랗거나 초록색이에요'],
+      urgencySignals: ['노랗거나 초록색이에요'],
+    },
+    {
+      id: 'eye_third',
+      system: 'eye',
+      text: '눈 안쪽에 하얀 막(제3안검)이 올라와 있나요?',
+      options: ['네, 올라와 있어요', '조금 보여요', '없어요', '잘 모르겠어요'],
+      urgencySignals: ['네, 올라와 있어요'],
     },
     {
       id: 'eye_vision',
       system: 'eye',
       text: '시력에 변화가 있나요?',
       options: ['물체에 자꾸 부딪혀요', '어두운 곳에서 못 봐요', '시력은 정상 같아요', '모르겠어요'],
-      emergencyTriggers: ['물체에 자꾸 부딪혀요'],
+      urgencySignals: ['물체에 자꾸 부딪혀요', '어두운 곳에서 못 봐요'],
+    },
+    {
+      id: 'eye_cornea',
+      system: 'eye',
+      text: '각막(눈동자 표면)에 상처나 흰 점이 보이나요?',
+      options: ['흰 점이나 혼탁이 보여요', '상처 같은 게 보여요', '없어요', '잘 모르겠어요'],
+      urgencySignals: ['상처 같은 게 보여요'],
     },
     {
       id: 'eye_pain',
       system: 'eye',
       text: '눈 주변을 만지면 아파하나요?',
       options: ['많이 아파해요 (피해요)', '약간 싫어해요', '괜찮아해요', '확인 못 했어요'],
-      emergencyTriggers: ['많이 아파해요 (피해요)'],
+      urgencySignals: ['많이 아파해요 (피해요)'],
+    },
+    {
+      id: 'eye_both',
+      system: 'eye',
+      text: '한쪽 눈만 이상한가요, 양쪽 다 이상한가요?',
+      options: ['양쪽 다 이상해요', '한쪽만 이상해요', '한쪽이 더 심해요', '모르겠어요'],
+    },
+    {
+      id: 'eye_trauma',
+      system: 'eye',
+      text: '눈에 외상을 입었을 가능성이 있나요?',
+      options: ['긁히거나 다쳤어요', '다른 동물과 싸웠어요', '없어요', '모르겠어요'],
+      urgencySignals: ['긁히거나 다쳤어요'],
+    },
+    {
+      id: 'eye_bp',
+      system: 'eye',
+      text: '고혈압 진단을 받은 적 있나요? (노령 동물의 시력 저하 원인)',
+      options: ['네, 혈압이 높아요', '측정한 적 없어요', '정상이에요', '모르겠어요'],
+      urgencySignals: ['네, 혈압이 높아요'],
     },
     {
       id: 'eye_onset',
       system: 'eye',
       text: '언제부터 증상이 생겼나요?',
       options: ['오늘 갑자기', '2~3일 됐어요', '1주일 이상', '오래됐는데 점점 심해져요'],
-      emergencyTriggers: ['오늘 갑자기'],
+      urgencySignals: ['오늘 갑자기'],
     },
   ],
   ear: [
@@ -373,21 +653,41 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'ear',
       text: '귀 안을 들여다보면 어떻게 보이나요?',
       options: ['까맣거나 갈색 분비물', '노랗거나 고름 같은 분비물', '붉게 부어있어요', '잘 안 보여요'],
-      emergencyTriggers: ['노랗거나 고름 같은 분비물'],
+      urgencySignals: ['노랗거나 고름 같은 분비물', '붉게 부어있어요'],
+    },
+    {
+      id: 'ear_smell',
+      system: 'ear',
+      text: '귀에서 냄새가 나나요?',
+      options: ['심한 악취가 나요', '약간 냄새가 나요', '없어요', '모르겠어요'],
+      urgencySignals: ['심한 악취가 나요'],
     },
     {
       id: 'ear_pain',
       system: 'ear',
       text: '귀 쪽을 만지면 아파하나요?',
       options: ['많이 아파해요 (피해요)', '약간 싫어해요', '괜찮아해요', '확인 못 했어요'],
-      emergencyTriggers: ['많이 아파해요 (피해요)'],
+      urgencySignals: ['많이 아파해요 (피해요)'],
+    },
+    {
+      id: 'ear_head_tilt',
+      system: 'ear',
+      text: '머리가 한쪽으로 기울어져 있나요?',
+      options: ['네, 한쪽으로 기울어져 있어요', '눈이 흔들려요', '둘 다 있어요', '없어요'],
+      urgencySignals: ['네, 한쪽으로 기울어져 있어요', '둘 다 있어요'],
+    },
+    {
+      id: 'ear_both',
+      system: 'ear',
+      text: '양쪽 귀 다 증상이 있나요?',
+      options: ['양쪽 다 이상해요', '한쪽만 이상해요', '한쪽이 더 심해요', '모르겠어요'],
     },
     {
       id: 'ear_recurrence',
       system: 'ear',
       text: '귀 문제가 자주 반복되나요?',
       options: ['처음이에요', '1~2달에 한 번 재발해요', '자주 재발해요 (월 1회 이상)', '항상 달고 살아요'],
-      emergencyTriggers: ['자주 재발해요 (월 1회 이상)', '항상 달고 살아요'],
+      urgencySignals: ['항상 달고 살아요'],
     },
     {
       id: 'ear_allergy',
@@ -396,11 +696,24 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       options: ['알레르기가 있어요', '피부 가려움이 자주 있어요', '없어요', '모르겠어요'],
     },
     {
+      id: 'ear_hematoma',
+      system: 'ear',
+      text: '귓바퀴(귀 겉면)가 부풀어 있거나 물렁물렁한가요?',
+      options: ['귓바퀴가 부풀어 있어요', '두껍게 변했어요', '정상이에요', '모르겠어요'],
+      urgencySignals: ['귓바퀴가 부풀어 있어요'],
+    },
+    {
+      id: 'ear_treatment',
+      system: 'ear',
+      text: '지금 귀 치료를 받고 있나요?',
+      options: ['치료 중이에요', '이전에 치료했는데 재발했어요', '아직 안 받았어요', '자가 치료 중이에요'],
+    },
+    {
       id: 'ear_duration',
       system: 'ear',
       text: '얼마나 됐나요?',
-      options: ['오늘 처음이에요', '3~7일 됐어요', '2주 이상이에요', '자주 재발해요'],
-      emergencyTriggers: ['2주 이상이에요'],
+      options: ['오늘 처음이에요', '3~7일 됐어요', '2주 이상이에요', '한 달 이상이에요'],
+      urgencySignals: ['2주 이상이에요', '한 달 이상이에요'],
     },
   ],
   orthopedic: [
@@ -408,14 +721,29 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       id: 'ortho_leg',
       system: 'orthopedic',
       text: '어떤 다리에 문제가 있나요?',
-      options: ['앞다리 한쪽', '뒷다리 한쪽', '여러 다리', '다리보다 허리·등이 문제인 것 같아요'],
+      options: ['앞다리 한쪽', '뒷다리 한쪽', '뒷다리 양쪽 다', '허리·등이 문제인 것 같아요'],
+      urgencySignals: ['뒷다리 양쪽 다'],
     },
     {
       id: 'ortho_onset',
       system: 'orthopedic',
       text: '증상이 어떻게 시작됐나요?',
-      options: ['갑자기 못 쓰게 됐어요', '서서히 심해졌어요', '다쳤어요 (낙하·사고)', '오래된 증상이에요'],
-      emergencyTriggers: ['갑자기 못 쓰게 됐어요', '다쳤어요 (낙하·사고)'],
+      options: ['갑자기 못 쓰게 됐어요', '서서히 심해졌어요', '사고나 낙하 후 시작됐어요', '오래된 증상이에요'],
+      urgencySignals: ['갑자기 못 쓰게 됐어요', '사고나 낙하 후 시작됐어요'],
+    },
+    {
+      id: 'ortho_weight',
+      system: 'orthopedic',
+      text: '다리에 체중을 실을 수 있나요?',
+      options: ['전혀 못 써요', '살짝 짚긴 해요', '절뚝이지만 쓸 수 있어요', '거의 정상이에요'],
+      urgencySignals: ['전혀 못 써요'],
+    },
+    {
+      id: 'ortho_pain',
+      system: 'orthopedic',
+      text: '해당 부위를 만지면 어떻게 하나요?',
+      options: ['많이 아파해요', '약간 싫어해요', '괜찮아해요', '확인 못 했어요'],
+      urgencySignals: ['많이 아파해요'],
     },
     {
       id: 'ortho_when',
@@ -424,18 +752,51 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       options: ['항상 절어요', '운동·산책 후 심해요', '아침에 일어날 때 심해요', '앉았다 일어날 때만'],
     },
     {
-      id: 'ortho_pain',
+      id: 'ortho_spine',
       system: 'orthopedic',
-      text: '해당 부위를 만지면 어떻게 하나요?',
+      text: '등이나 허리 부위를 만지면 아파하나요?',
       options: ['많이 아파해요', '약간 싫어해요', '괜찮아해요', '확인 못 했어요'],
-      emergencyTriggers: ['많이 아파해요'],
+      urgencySignals: ['많이 아파해요'],
     },
     {
-      id: 'ortho_weight',
+      id: 'ortho_hind_drag',
       system: 'orthopedic',
-      text: '다리에 체중을 실을 수 있나요?',
-      options: ['전혀 못 써요', '살짝 짚긴 해요', '절뚝이지만 쓸 수 있어요', '거의 정상이에요'],
-      emergencyTriggers: ['전혀 못 써요'],
+      text: '뒷다리를 질질 끌거나 마비 증상이 있나요?',
+      options: ['뒷다리를 전혀 못 써요', '질질 끌어요', '약해 보이는 정도예요', '없어요'],
+      urgencySignals: ['뒷다리를 전혀 못 써요', '질질 끌어요'],
+    },
+    {
+      id: 'ortho_bladder',
+      system: 'orthopedic',
+      text: '소변이나 대변을 못 가리게 됐나요? (척수 손상 확인)',
+      options: ['소변을 못 가려요', '대변을 못 가려요', '둘 다 못 가려요', '괜찮아요'],
+      urgencySignals: ['소변을 못 가려요', '둘 다 못 가려요'],
+    },
+    {
+      id: 'ortho_swelling',
+      system: 'orthopedic',
+      text: '관절이나 다리가 부어있나요?',
+      options: ['눈에 띄게 부어있어요', '약간 부어 보여요', '없어요', '확인 못 했어요'],
+      urgencySignals: ['눈에 띄게 부어있어요'],
+    },
+    {
+      id: 'ortho_age',
+      system: 'orthopedic',
+      text: '나이가 어떻게 되나요? (관절 문제 원인 파악)',
+      options: ['1~4살 (어린 편)', '5~8살 (중년)', '9~12살 (노령)', '13살 이상 (고령)'],
+      urgencySignals: ['13살 이상 (고령)', '9~12살 (노령)'],
+    },
+    {
+      id: 'ortho_surgery',
+      system: 'orthopedic',
+      text: '과거에 정형외과 수술을 받은 적 있나요?',
+      options: ['슬개골 수술을 받았어요', '십자인대 수술을 받았어요', '디스크 수술을 받았어요', '없어요'],
+    },
+    {
+      id: 'ortho_xray',
+      system: 'orthopedic',
+      text: '방사선(엑스레이) 촬영을 해봤나요?',
+      options: ['최근에 찍었어요', '이전에 찍었어요', '아직 안 찍었어요', '모르겠어요'],
     },
   ],
   dental: [
@@ -444,40 +805,76 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'dental',
       text: '입 안이나 치아 상태가 어떤가요?',
       options: ['입냄새가 심해요', '잇몸이 붓거나 빨개요', '치석이 많이 쌓였어요', '이빨이 흔들려요'],
-      emergencyTriggers: ['이빨이 흔들려요'],
+      urgencySignals: ['이빨이 흔들려요', '잇몸이 붓거나 빨개요'],
     },
     {
       id: 'dental_eat',
       system: 'dental',
       text: '밥 먹는 데 영향이 있나요?',
       options: ['밥 먹기 힘들어해요', '한쪽으로만 씹어요', '딱딱한 건 못 먹어요', '별로 영향 없어요'],
-      emergencyTriggers: ['밥 먹기 힘들어해요'],
+      urgencySignals: ['밥 먹기 힘들어해요'],
     },
     {
       id: 'dental_gum_color',
       system: 'dental',
       text: '잇몸 색깔이 어떤가요?',
       options: ['분홍색 (정상)', '빨갛거나 진한 빨강이에요', '하얗거나 창백해요', '잘 모르겠어요'],
-      emergencyTriggers: ['하얗거나 창백해요'],
+      urgencySignals: ['하얗거나 창백해요', '빨갛거나 진한 빨강이에요'],
     },
     {
       id: 'dental_mouth_open',
       system: 'dental',
       text: '입 주변이나 얼굴이 부어있나요?',
       options: ['턱 아래나 뺨이 부어있어요', '코나 눈 아래가 부어있어요', '없어요', '잘 모르겠어요'],
-      emergencyTriggers: ['코나 눈 아래가 부어있어요'],
+      urgencySignals: ['코나 눈 아래가 부어있어요', '턱 아래나 뺨이 부어있어요'],
+    },
+    {
+      id: 'dental_blood',
+      system: 'dental',
+      text: '입에서 피가 난 적 있나요?',
+      options: ['네, 피가 났어요', '음식을 먹을 때 피가 나요', '없어요', '모르겠어요'],
+      urgencySignals: ['네, 피가 났어요'],
+    },
+    {
+      id: 'dental_jaw',
+      system: 'dental',
+      text: '입을 잘 다물거나 열 수 있나요?',
+      options: ['입을 못 다물어요', '입 벌리기가 힘들어 보여요', '정상이에요', '모르겠어요'],
+      urgencySignals: ['입을 못 다물어요'],
+    },
+    {
+      id: 'dental_xray',
+      system: 'dental',
+      text: '치아 방사선 촬영(전신마취 치과 처치)을 받아봤나요?',
+      options: ['받아봤어요', '스케일링만 받았어요', '무마취 스케일링만 받았어요', '한 번도 받지 않았어요'],
+      urgencySignals: ['무마취 스케일링만 받았어요', '한 번도 받지 않았어요'],
     },
     {
       id: 'dental_duration',
       system: 'dental',
-      text: '마지막으로 스케일링(전신마취 하의 치과 처치)을 받은 게 언제인가요?',
-      options: ['1년 이내', '2~3년 됐어요', '한 번도 안 받았어요', '무마취 스케일링만 받았어요'],
+      text: '마지막 치과 처치가 언제인가요?',
+      options: ['1년 이내', '2~3년 됐어요', '5년 이상', '한 번도 안 했어요'],
+      urgencySignals: ['5년 이상', '한 번도 안 했어요'],
+    },
+    {
+      id: 'dental_oral_tumor',
+      system: 'dental',
+      text: '입 안에 혹이나 변색된 부위가 보이나요?',
+      options: ['혹 같은 게 보여요', '궤양이나 색이 변한 부위가 있어요', '없어요', '잘 모르겠어요'],
+      urgencySignals: ['혹 같은 게 보여요', '궤양이나 색이 변한 부위가 있어요'],
     },
     {
       id: 'dental_systemic',
       system: 'dental',
-      text: '기존에 심장병이나 신부전이 있나요?',
+      text: '기존에 심장병이나 신부전이 있나요? (마취 위험도 확인)',
       options: ['심장병이 있어요', '신부전이 있어요', '둘 다 있어요', '없어요'],
+    },
+    {
+      id: 'dental_drool',
+      system: 'dental',
+      text: '침을 많이 흘리거나 입을 자주 닦나요?',
+      options: ['침을 계속 흘려요', '자주 입을 닦아요', '가끔 있어요', '없어요'],
+      urgencySignals: ['침을 계속 흘려요'],
     },
   ],
   lump: [
@@ -486,34 +883,68 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'lump',
       text: '혹이나 덩어리가 어디에 있나요?',
       options: ['피부 표면 (손으로 만져져요)', '유선 주변 (젖꼭지 근처)', '입·목 주변', '몸 안쪽인 것 같아요'],
+      urgencySignals: ['몸 안쪽인 것 같아요', '입·목 주변'],
     },
     {
       id: 'lump_feel',
       system: 'lump',
       text: '혹의 느낌이 어떤가요?',
       options: ['말랑하고 잘 움직여요', '딱딱하고 고정돼 있어요', '만지면 아파해요', '빠르게 커지고 있어요'],
-      emergencyTriggers: ['빠르게 커지고 있어요', '만지면 아파해요'],
+      urgencySignals: ['빠르게 커지고 있어요', '딱딱하고 고정돼 있어요'],
     },
     {
       id: 'lump_size',
       system: 'lump',
       text: '크기가 어느 정도인가요?',
       options: ['완두콩 크기 이하', '포도알 정도', '골프공 이상', '잘 모르겠어요'],
-      emergencyTriggers: ['골프공 이상'],
+      urgencySignals: ['골프공 이상'],
+    },
+    {
+      id: 'lump_growth',
+      system: 'lump',
+      text: '혹이 얼마나 빠르게 커지고 있나요?',
+      options: ['1~2주 안에 눈에 띄게 커졌어요', '한 달에 걸쳐 커졌어요', '크기 변화 없어요', '모르겠어요'],
+      urgencySignals: ['1~2주 안에 눈에 띄게 커졌어요'],
     },
     {
       id: 'lump_when',
       system: 'lump',
       text: '언제 발견했나요?',
       options: ['오늘 처음 발견했어요', '1~2주 됐어요', '한 달 이상 됐어요', '오래됐는데 최근 변했어요'],
-      emergencyTriggers: ['오래됐는데 최근 변했어요'],
+      urgencySignals: ['오래됐는데 최근 변했어요'],
     },
     {
       id: 'lump_surface',
       system: 'lump',
       text: '혹 표면이 어떻게 보이나요?',
       options: ['피부가 정상이에요', '피부가 변색됐어요', '궤양이나 상처가 있어요', '분비물이 나와요'],
-      emergencyTriggers: ['궤양이나 상처가 있어요', '분비물이 나와요'],
+      urgencySignals: ['궤양이나 상처가 있어요', '분비물이 나와요'],
+    },
+    {
+      id: 'lump_multiple',
+      system: 'lump',
+      text: '혹이 여러 개인가요?',
+      options: ['하나만 있어요', '2~3개 있어요', '여러 곳에 있어요', '온몸에 퍼진 것 같아요'],
+      urgencySignals: ['온몸에 퍼진 것 같아요', '여러 곳에 있어요'],
+    },
+    {
+      id: 'lump_systemic',
+      system: 'lump',
+      text: '혹 외에 다른 증상이 있나요?',
+      options: ['식욕이 줄었어요', '체중이 빠졌어요', '기운이 없어요', '다른 증상 없어요'],
+      urgencySignals: ['체중이 빠졌어요', '식욕이 줄었어요'],
+    },
+    {
+      id: 'lump_neuter',
+      system: 'lump',
+      text: '중성화 수술을 했나요?',
+      options: ['네, 했어요', '아니요, 안 했어요', '모르겠어요'],
+    },
+    {
+      id: 'lump_fna',
+      system: 'lump',
+      text: '세침흡인세포검사(FNA)를 받아봤나요?',
+      options: ['받아봤어요 (결과 있어요)', '아직 안 받았어요', '검사 예정이에요', '모르겠어요'],
     },
   ],
   endocrine: [
@@ -522,13 +953,14 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'endocrine',
       text: '어떤 변화가 가장 눈에 띄나요?',
       options: ['물을 엄청 많이 마셔요', '체중이 갑자기 빠졌어요', '배만 볼록하게 나왔어요', '털이 많이 빠지고 피부가 변했어요'],
+      urgencySignals: ['배만 볼록하게 나왔어요'],
     },
     {
       id: 'endo_weight_period',
       system: 'endocrine',
       text: '체중 변화가 얼마나 빠르게 일어났나요?',
       options: ['1~2주 안에 눈에 띄게', '한 달 정도에 걸쳐서', '3개월 이상 서서히', '잘 모르겠어요'],
-      emergencyTriggers: ['1~2주 안에 눈에 띄게'],
+      urgencySignals: ['1~2주 안에 눈에 띄게'],
     },
     {
       id: 'endo_appetite',
@@ -541,14 +973,62 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'endocrine',
       text: '소변량이나 횟수가 달라졌나요?',
       options: ['소변량이 많이 늘었어요', '소변을 자주 봐요', '소변 색이 이상해요', '별 변화 없어요'],
-      emergencyTriggers: ['소변량이 많이 늘었어요'],
+      urgencySignals: ['소변량이 많이 늘었어요'],
+    },
+    {
+      id: 'endo_panting',
+      system: 'endocrine',
+      text: '운동 없이도 헐떡거리거나 호흡이 빠른가요?',
+      options: ['항상 헐떡거려요', '자주 헐떡거려요', '가끔 있어요', '없어요'],
+      urgencySignals: ['항상 헐떡거려요'],
+    },
+    {
+      id: 'endo_belly',
+      system: 'endocrine',
+      text: '배가 팽창하거나 늘어진 느낌이 있나요?',
+      options: ['많이 볼록해요', '조금 팽창한 것 같아요', '없어요', '모르겠어요'],
+      urgencySignals: ['많이 볼록해요'],
+    },
+    {
+      id: 'endo_muscle',
+      system: 'endocrine',
+      text: '근육이 약해지거나 계단 오르기가 힘들어졌나요?',
+      options: ['많이 약해졌어요', '조금 약해진 것 같아요', '변화 없어요', '모르겠어요'],
+      urgencySignals: ['많이 약해졌어요'],
+    },
+    {
+      id: 'endo_steroid_hx',
+      system: 'endocrine',
+      text: '스테로이드를 장기간 복용한 적 있나요?',
+      options: ['6개월 이상 복용했어요', '단기 복용만 했어요', '없어요', '지금도 복용 중이에요'],
+      urgencySignals: ['6개월 이상 복용했어요', '지금도 복용 중이에요'],
+    },
+    {
+      id: 'endo_thyroid',
+      system: 'endocrine',
+      text: '갑상선 검사를 받아봤나요? (고양이, 노령견 주의)',
+      options: ['갑상선 수치가 높아요', '정상이에요', '검사 안 했어요', '모르겠어요'],
+      urgencySignals: ['갑상선 수치가 높아요'],
     },
     {
       id: 'endo_other',
       system: 'endocrine',
-      text: '다른 증상도 함께 있나요?',
-      options: ['헐떡거리거나 호흡이 빨라요', '복부가 팽창했어요', '근육이 약해졌어요', '특별히 없어요'],
-      emergencyTriggers: ['복부가 팽창했어요'],
+      text: '피부나 털에 변화가 있나요?',
+      options: ['털이 대칭으로 빠져요', '피부가 얇아지거나 멍이 잘 들어요', '색소 침착이 생겼어요', '없어요'],
+      urgencySignals: ['피부가 얇아지거나 멍이 잘 들어요'],
+    },
+    {
+      id: 'endo_diagnosis',
+      system: 'endocrine',
+      text: '쿠싱증후군 또는 당뇨 진단을 받은 적 있나요?',
+      options: ['쿠싱증후군 진단받았어요', '당뇨 진단받았어요', '검사 중이에요', '없어요'],
+      urgencySignals: ['쿠싱증후군 진단받았어요', '당뇨 진단받았어요'],
+    },
+    {
+      id: 'endo_acth',
+      system: 'endocrine',
+      text: 'ACTH 자극 검사나 코르티솔 검사를 받아봤나요?',
+      options: ['받아봤어요 (수치 있어요)', '아직 안 받았어요', '검사 예정이에요', '모르겠어요'],
     },
   ],
 }
@@ -574,40 +1054,47 @@ export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfil
   const order: QuestionSystem[] = ['respiratory', 'neurological', 'urinary', 'digestive', 'skin', 'eye', 'ear', 'orthopedic', 'dental', 'lump', 'endocrine', 'general']
   const sorted = [...systems].sort((a, b) => order.indexOf(a) - order.indexOf(b))
 
-  // 심장병이면 호흡기 문제가 없어도 호흡기 질문 앞에 추가
   if (profile?.conditions?.includes('심장병') && !sorted.includes('respiratory')) {
     sorted.unshift('respiratory')
   }
 
+  const seen = new Set<string>()
   const questions: Question[] = []
   const primary = sorted[0]
+
   for (const sys of sorted) {
-    // 주 증상은 모든 질문, 부가 증상은 최대 3개
-    const limit = sys === primary ? Infinity : 3
-    questions.push(...QUESTION_BANKS[sys].slice(0, limit))
-  }
-  if (!systems.includes('general')) {
-    questions.push(QUESTION_BANKS.general[0], QUESTION_BANKS.general[1])
+    // 주 증상은 전체 질문, 부가 증상은 최대 6개 (기존 3개에서 확대)
+    const limit = sys === primary ? Infinity : 6
+    for (const q of QUESTION_BANKS[sys].slice(0, limit)) {
+      if (!seen.has(q.id)) { seen.add(q.id); questions.push(q) }
+    }
   }
 
-  // 구토 + 설사 동시 감지 시 탈수 체크 질문을 앞에 삽입
+  // 일반 질문은 항상 뒤에 4개 추가
+  for (const q of QUESTION_BANKS.general.slice(0, 4)) {
+    if (!seen.has(q.id)) { seen.add(q.id); questions.push(q) }
+  }
+
+  // 구토 + 설사 동시: 탈수 체크 질문을 맨 앞에
   if (symptomText && systems.includes('digestive')) {
     const hasVomit = ['구토', '토했', '토를', '토해'].some(kw => symptomText.includes(kw))
     const hasDiarrhea = symptomText.includes('설사')
     if (hasVomit && hasDiarrhea) {
-      questions.unshift(...COMBINED_VOMIT_DIARRHEA_QUESTIONS)
+      const extra = COMBINED_VOMIT_DIARRHEA_QUESTIONS.filter(q => !seen.has(q.id))
+      questions.unshift(...extra)
     }
   }
 
-  // 신부전이면 탈수 확인 질문 맨 앞에 삽입
+  // 신부전 탈수 확인
   if (profile?.conditions?.includes('신부전')) {
-    questions.unshift({
+    const q: Question = {
       id: 'kidney_dehydrate',
       system: 'general',
       text: '신부전이 있어서 탈수 여부가 중요해요. 피부를 살짝 집었다 놓으면 바로 돌아오나요?',
       options: ['바로 돌아와요', '천천히 돌아와요 (2초 이상)', '그대로 있어요', '확인 못 했어요'],
-      emergencyTriggers: ['그대로 있어요'],
-    })
+      urgencySignals: ['천천히 돌아와요 (2초 이상)', '그대로 있어요'],
+    }
+    if (!seen.has(q.id)) questions.unshift(q)
   }
 
   return questions
@@ -618,10 +1105,19 @@ export function checkAnswerForEmergency(question: Question, answer: string): boo
 }
 
 export function assessUrgency(questions: Question[], answers: Record<string, string>): UrgencyLevel {
+  // 즉시 종료 emergencyTrigger 체크
   for (const q of questions) {
     const ans = answers[q.id]
     if (ans && q.emergencyTriggers?.includes(ans)) return 'emergency'
   }
+  // urgencySignals 누적 체크 (2개 이상이면 emergency)
+  let urgencyCount = 0
+  for (const q of questions) {
+    const ans = answers[q.id]
+    if (ans && q.urgencySignals?.includes(ans)) urgencyCount++
+  }
+  if (urgencyCount >= 2) return 'emergency'
+  if (urgencyCount === 1) return 'caution'
 
   // 혈변/혈토/복부 통증/흑색변/고열 등은 emergency 수준으로 상향
   const emergencyFromAnswers = [
