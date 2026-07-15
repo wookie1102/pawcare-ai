@@ -25,6 +25,7 @@ import {
   type BehaviorType,
 } from '@/lib/chatLogic'
 import { getActivePet, saveConsultation, type PetProfile, type ConsultationMessage } from '@/lib/storage'
+import { searchQA, formatQAAnswer, loadQADB } from '@/lib/qaSearch'
 
 type Step = 'intro' | 'symptom' | 'questioning' | 'result'
 
@@ -58,12 +59,18 @@ export default function ChatPage() {
   const [behaviorType, setBehaviorType] = useState<BehaviorType>('general_behavior')
   const [showSOAP, setShowSOAP] = useState(false)
   const [followUpText, setFollowUpText] = useState('')
+  const [followUpLoading, setFollowUpLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const savedRef = useRef(false)
 
   useEffect(() => {
     setProfile(getActivePet())
   }, [])
+
+  // result 단계 진입 시 Q&A DB 미리 로드
+  useEffect(() => {
+    if (step === 'result') loadQADB()
+  }, [step])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -205,11 +212,17 @@ export default function ChatPage() {
       } else {
         const finalUrgency = assessUrgency(questions, newAnswers)
         setUrgency(finalUrgency)
-        setTimeout(() => {
+        setTimeout(async () => {
           addAiMessage('확인이 끝났어요. 결과를 알려드릴게요.')
+          // 기본 결과 메시지 생성
+          const baseMsg = makeResultMessage(finalUrgency, systems, profile?.name || '반려동물', questions, newAnswers)
+          // 증상 텍스트로 관련 Q&A 검색 (병렬)
+          const qaResults = await searchQA(symptomText, 2).catch(() => [])
+          const qaText = qaResults.length > 0
+            ? '\n\n─────────────────\n💬 비슷한 사례의 수의사 답변\n\n' + formatQAAnswer(qaResults)
+            : ''
           setTimeout(() => {
-            const msg = makeResultMessage(finalUrgency, systems, profile?.name || '반려동물', questions, newAnswers)
-            addAiMessage(msg, { isResult: true, urgency: finalUrgency })
+            addAiMessage(baseMsg + qaText, { isResult: true, urgency: finalUrgency })
             setStep('result')
           }, 400)
         }, 300)
@@ -228,14 +241,28 @@ export default function ChatPage() {
     }
   }
 
-  function handleFollowUp() {
-    if (!followUpText.trim()) return
+  async function handleFollowUp() {
+    if (!followUpText.trim() || followUpLoading) return
     const text = followUpText.trim()
     setFollowUpText('')
+    setFollowUpLoading(true)
     addUserMessage(text)
-    setTimeout(() => {
+
+    try {
+      // 실제 Q&A DB에서 관련 답변 검색
+      const results = await searchQA(text, 3)
+      if (results.length > 0) {
+        const qaAnswer = formatQAAnswer(results)
+        addAiMessage(qaAnswer)
+      } else {
+        // 검색 결과 없으면 기존 로직 fallback
+        addAiMessage(answerFollowUp(text))
+      }
+    } catch {
       addAiMessage(answerFollowUp(text))
-    }, 300)
+    } finally {
+      setFollowUpLoading(false)
+    }
   }
 
   const petLabel = profile ? `${profile.name} (${profile.breed})` : null
@@ -472,16 +499,17 @@ export default function ChatPage() {
             <input
               value={followUpText}
               onChange={e => setFollowUpText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && followUpText.trim()) handleFollowUp() }}
+              onKeyDown={e => { if (e.key === 'Enter' && !followUpLoading && followUpText.trim()) handleFollowUp() }}
               placeholder="궁금한 점을 입력해주세요..."
-              className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              disabled={followUpLoading}
+              className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 disabled:bg-gray-50"
             />
             <button
               onClick={handleFollowUp}
-              disabled={!followUpText.trim()}
+              disabled={!followUpText.trim() || followUpLoading}
               className="px-4 py-2 bg-green-500 disabled:bg-green-200 text-white rounded-xl text-sm font-semibold transition-colors"
             >
-              전송
+              {followUpLoading ? '...' : '전송'}
             </button>
           </div>
         </div>
