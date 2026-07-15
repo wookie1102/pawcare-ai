@@ -208,7 +208,7 @@ export default function ChatPage() {
         setTimeout(() => {
           addAiMessage('확인이 끝났어요. 결과를 알려드릴게요.')
           setTimeout(() => {
-            const msg = makeResultMessage(finalUrgency, systems, profile?.name || '반려동물')
+            const msg = makeResultMessage(finalUrgency, systems, profile?.name || '반려동물', questions, newAnswers)
             addAiMessage(msg, { isResult: true, urgency: finalUrgency })
             setStep('result')
           }, 400)

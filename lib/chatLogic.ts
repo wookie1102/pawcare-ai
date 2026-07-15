@@ -67,10 +67,30 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       emergencyTriggers: ['배까지 움직이며 숨 쉬어요', '입으로 숨 쉬어요'],
     },
     {
+      id: 'resp_cough_type',
+      system: 'respiratory',
+      text: '기침이 어떤 형태인가요?',
+      options: ['마른 기침이에요', '가래가 끓는 듯한 기침이에요', '기침 후 구토해요', '기침은 없고 호흡만 이상해요'],
+    },
+    {
       id: 'resp_when',
       system: 'respiratory',
       text: '호흡 증상이 언제 더 심해지나요?',
-      options: ['밤이나 새벽에 심해요', '운동 후에 심해요', '항상 비슷해요', '기침은 없어요'],
+      options: ['밤이나 새벽에 심해요', '운동 후에 심해요', '항상 비슷해요', '자다가 갑자기 깨요'],
+    },
+    {
+      id: 'resp_duration',
+      system: 'respiratory',
+      text: '이 증상이 얼마나 됐나요?',
+      options: ['오늘 갑자기 시작됐어요', '2~3일 됐어요', '1~2주 됐어요', '1개월 이상이에요'],
+      emergencyTriggers: ['오늘 갑자기 시작됐어요'],
+    },
+    {
+      id: 'resp_nasal',
+      system: 'respiratory',
+      text: '코 분비물이나 재채기가 있나요?',
+      options: ['맑은 콧물이 나요', '노랗거나 탁한 콧물이에요', '코피가 났어요', '없어요'],
+      emergencyTriggers: ['코피가 났어요'],
     },
   ],
   neurological: [
@@ -88,14 +108,42 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       options: ['5분 미만이에요', '5~30분이에요', '30분 이상이에요', '계속 반복돼요'],
       emergencyTriggers: ['5~30분이에요', '30분 이상이에요', '계속 반복돼요'],
     },
+    {
+      id: 'neuro_after',
+      system: 'neurological',
+      text: '경련·발작 후 상태는 어떤가요?',
+      options: ['바로 회복됐어요', '멍하거나 비틀거려요 (수분 내)', '몇 시간째 이상해요', '아직 회복 못 했어요'],
+      emergencyTriggers: ['아직 회복 못 했어요'],
+    },
+    {
+      id: 'neuro_first',
+      system: 'neurological',
+      text: '이런 증상이 처음인가요?',
+      options: ['처음이에요', '이전에도 있었어요 (6개월 이상 전)', '최근 반복되고 있어요', '점점 잦아지고 있어요'],
+      emergencyTriggers: ['점점 잦아지고 있어요'],
+    },
   ],
   urinary: [
     {
       id: 'uri_output',
       system: 'urinary',
       text: '소변을 어떻게 보고 있나요?',
-      options: ['소변을 아예 못 봐요', '찔끔씩 나와요', '소변에 피가 섞여요', '소변량이 줄었어요'],
+      options: ['소변을 아예 못 봐요', '찔끔씩 자주 시도해요', '소변에 피가 섞여요', '소변량이 많이 줄었어요'],
       emergencyTriggers: ['소변을 아예 못 봐요'],
+    },
+    {
+      id: 'uri_color',
+      system: 'urinary',
+      text: '소변 색깔이 어떤가요?',
+      options: ['노란색 (정상)', '빨갛거나 분홍색이에요', '갈색이나 진한 색이에요', '확인 못 했어요'],
+      emergencyTriggers: ['빨갛거나 분홍색이에요', '갈색이나 진한 색이에요'],
+    },
+    {
+      id: 'uri_pain',
+      system: 'urinary',
+      text: '소변 볼 때 통증 신호가 있나요?',
+      options: ['울거나 끙끙거려요', '자세가 이상해 보여요', '배를 핥아요', '특별한 신호 없어요'],
+      emergencyTriggers: ['울거나 끙끙거려요'],
     },
     {
       id: 'uri_duration',
@@ -104,27 +152,64 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       options: ['오늘부터예요', '어제부터예요', '2~3일 됐어요', '1주일 이상이에요'],
       emergencyTriggers: ['어제부터예요', '2~3일 됐어요'],
     },
+    {
+      id: 'uri_drink',
+      system: 'urinary',
+      text: '물은 평소보다 많이 마시나요?',
+      options: ['평소보다 훨씬 많이 마셔요', '비슷하게 마셔요', '오히려 적게 마셔요', '잘 모르겠어요'],
+    },
   ],
   digestive: [
+    {
+      id: 'dige_onset',
+      system: 'digestive',
+      text: '증상이 언제부터 시작됐나요?',
+      options: ['오늘 갑자기 시작됐어요', '어제부터예요', '2~3일 됐어요', '1주일 이상이에요'],
+    },
     {
       id: 'dige_freq',
       system: 'digestive',
       text: '구토나 설사를 얼마나 자주 하나요?',
-      options: ['하루 1~2회', '하루 3~5회', '하루 6회 이상', '구토/설사는 없어요'],
+      options: ['하루 1~2회', '하루 3~5회', '하루 6회 이상', '한 번만 했어요'],
       emergencyTriggers: ['하루 6회 이상'],
+    },
+    {
+      id: 'dige_vomit_type',
+      system: 'digestive',
+      text: '구토물이 어떻게 생겼나요? (구토가 없으면 마지막 선택)',
+      options: ['먹은 음식이 나와요', '노랗거나 거품 같아요 (담즙)', '흰 거품이나 침이에요', '구토는 없어요'],
+    },
+    {
+      id: 'dige_stool',
+      system: 'digestive',
+      text: '대변 상태는 어떤가요?',
+      options: ['정상이에요', '묽거나 죽처럼 풀어져요', '물처럼 흘러요', '대변을 못 봤어요'],
     },
     {
       id: 'dige_blood',
       system: 'digestive',
-      text: '토하거나 설사에 피가 섞여 있나요?',
-      options: ['네, 피가 보여요', '아니요, 없어요', '확인하기 어려워요'],
-      emergencyTriggers: ['네, 피가 보여요'],
+      text: '구토물이나 대변에 피가 섞여 있나요?',
+      options: ['구토에 피가 보여요', '대변에 피가 섞여요', '둘 다 없어요', '확인하기 어려워요'],
+      emergencyTriggers: ['구토에 피가 보여요', '대변에 피가 섞여요'],
     },
     {
       id: 'dige_eat',
       system: 'digestive',
       text: '밥과 물을 먹고 있나요?',
-      options: ['잘 먹고 마셔요', '조금씩 먹어요', '거의 안 먹어요', '아예 안 먹어요'],
+      options: ['잘 먹고 마셔요', '물만 조금 마셔요', '거의 안 먹어요', '아무것도 안 먹어요'],
+    },
+    {
+      id: 'dige_cause',
+      system: 'digestive',
+      text: '최근에 바뀐 게 있었나요?',
+      options: ['새로운 음식이나 간식을 줬어요', '뭔가를 삼켰을 수 있어요', '스트레스 상황이 있었어요', '특별히 바뀐 건 없어요'],
+    },
+    {
+      id: 'dige_abdomen',
+      system: 'digestive',
+      text: '배를 살짝 눌러보면 어떻게 반응하나요?',
+      options: ['아파하지 않아요', '약간 긴장하거나 피해요', '많이 아파해요', '배가 빵빵하게 부풀어 있어요'],
+      emergencyTriggers: ['많이 아파해요', '배가 빵빵하게 부풀어 있어요'],
     },
   ],
   general: [
@@ -162,6 +247,13 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       text: '증상이 언제부터, 어떻게 시작됐나요?',
       options: ['갑자기 시작됐어요', '특정 계절에만 심해요', '오래됐는데 점점 심해져요', '새 간식·사료 바꾼 뒤 시작됐어요'],
     },
+    {
+      id: 'skin_smell',
+      system: 'skin',
+      text: '피부나 털에서 냄새가 나나요?',
+      options: ['퀴퀴하거나 기름진 냄새가 나요', '고름 냄새가 나요', '특별한 냄새 없어요', '잘 모르겠어요'],
+      emergencyTriggers: ['고름 냄새가 나요'],
+    },
   ],
   eye: [
     {
@@ -177,6 +269,13 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       text: '눈을 어떻게 하나요?',
       options: ['계속 비벼요', '계속 감고 있어요', '눈물이 많이 나요', '평소와 비슷해요'],
       emergencyTriggers: ['계속 감고 있어요'],
+    },
+    {
+      id: 'eye_discharge',
+      system: 'eye',
+      text: '눈 분비물이 있다면 어떤 색인가요?',
+      options: ['맑거나 투명해요', '노랗거나 초록색이에요', '갈색이나 진해요', '없어요'],
+      emergencyTriggers: ['노랗거나 초록색이에요'],
     },
     {
       id: 'eye_onset',
@@ -200,6 +299,13 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       emergencyTriggers: ['노랗거나 고름 같은 분비물'],
     },
     {
+      id: 'ear_pain',
+      system: 'ear',
+      text: '귀 쪽을 만지면 아파하나요?',
+      options: ['많이 아파해요 (피해요)', '약간 싫어해요', '괜찮아해요', '확인 못 했어요'],
+      emergencyTriggers: ['많이 아파해요 (피해요)'],
+    },
+    {
       id: 'ear_duration',
       system: 'ear',
       text: '얼마나 됐나요?',
@@ -215,17 +321,31 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       options: ['앞다리 한쪽', '뒷다리 한쪽', '여러 다리', '다리보다 허리·등이 문제인 것 같아요'],
     },
     {
+      id: 'ortho_onset',
+      system: 'orthopedic',
+      text: '증상이 어떻게 시작됐나요?',
+      options: ['갑자기 못 쓰게 됐어요', '서서히 심해졌어요', '다쳤어요 (낙하·사고)', '오래된 증상이에요'],
+      emergencyTriggers: ['갑자기 못 쓰게 됐어요', '다쳤어요 (낙하·사고)'],
+    },
+    {
       id: 'ortho_when',
       system: 'orthopedic',
       text: '언제 증상이 심해지나요?',
       options: ['항상 절어요', '운동·산책 후 심해요', '아침에 일어날 때 심해요', '앉았다 일어날 때만'],
     },
     {
-      id: 'ortho_onset',
+      id: 'ortho_pain',
       system: 'orthopedic',
-      text: '증상이 어떻게 시작됐나요?',
-      options: ['갑자기 못 쓰게 됐어요', '서서히 심해졌어요', '다쳤어요 (낙하·사고)', '오래된 증상이에요'],
-      emergencyTriggers: ['갑자기 못 쓰게 됐어요', '다쳤어요 (낙하·사고)'],
+      text: '해당 부위를 만지면 어떻게 하나요?',
+      options: ['많이 아파해요', '약간 싫어해요', '괜찮아해요', '확인 못 했어요'],
+      emergencyTriggers: ['많이 아파해요'],
+    },
+    {
+      id: 'ortho_weight',
+      system: 'orthopedic',
+      text: '다리에 체중을 실을 수 있나요?',
+      options: ['전혀 못 써요', '살짝 짚긴 해요', '절뚝이지만 쓸 수 있어요', '거의 정상이에요'],
+      emergencyTriggers: ['전혀 못 써요'],
     },
   ],
   dental: [
@@ -242,6 +362,13 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       text: '밥 먹는 데 영향이 있나요?',
       options: ['밥 먹기 힘들어해요', '한쪽으로만 씹어요', '딱딱한 건 못 먹어요', '별로 영향 없어요'],
       emergencyTriggers: ['밥 먹기 힘들어해요'],
+    },
+    {
+      id: 'dental_gum_color',
+      system: 'dental',
+      text: '잇몸 색깔이 어떤가요?',
+      options: ['분홍색 (정상)', '빨갛거나 보라색이에요', '하얗거나 창백해요', '잘 모르겠어요'],
+      emergencyTriggers: ['빨갛거나 보라색이에요'],
     },
     {
       id: 'dental_duration',
@@ -265,11 +392,25 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       emergencyTriggers: ['빠르게 커지고 있어요', '만지면 아파해요'],
     },
     {
+      id: 'lump_size',
+      system: 'lump',
+      text: '크기가 어느 정도인가요?',
+      options: ['완두콩 크기 이하', '포도알 정도', '골프공 이상', '잘 모르겠어요'],
+      emergencyTriggers: ['골프공 이상'],
+    },
+    {
       id: 'lump_when',
       system: 'lump',
       text: '언제 발견했나요?',
       options: ['오늘 처음 발견했어요', '1~2주 됐어요', '한 달 이상 됐어요', '오래됐는데 최근 변했어요'],
       emergencyTriggers: ['오래됐는데 최근 변했어요'],
+    },
+    {
+      id: 'lump_surface',
+      system: 'lump',
+      text: '혹 표면이 어떻게 보이나요?',
+      options: ['피부가 정상이에요', '피부가 변색됐어요', '궤양이나 상처가 있어요', '분비물이 나와요'],
+      emergencyTriggers: ['궤양이나 상처가 있어요', '분비물이 나와요'],
     },
   ],
   endocrine: [
@@ -278,6 +419,13 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'endocrine',
       text: '어떤 변화가 가장 눈에 띄나요?',
       options: ['물을 엄청 많이 마셔요', '체중이 갑자기 빠졌어요', '배만 볼록하게 나왔어요', '털이 많이 빠지고 피부가 변했어요'],
+    },
+    {
+      id: 'endo_weight_period',
+      system: 'endocrine',
+      text: '체중 변화가 얼마나 빠르게 일어났나요?',
+      options: ['1~2주 안에 눈에 띄게', '한 달 정도에 걸쳐서', '3개월 이상 서서히', '잘 모르겠어요'],
+      emergencyTriggers: ['1~2주 안에 눈에 띄게'],
     },
     {
       id: 'endo_appetite',
@@ -291,6 +439,13 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       text: '소변량이나 횟수가 달라졌나요?',
       options: ['소변량이 많이 늘었어요', '소변을 자주 봐요', '소변 색이 이상해요', '별 변화 없어요'],
       emergencyTriggers: ['소변량이 많이 늘었어요'],
+    },
+    {
+      id: 'endo_other',
+      system: 'endocrine',
+      text: '다른 증상도 함께 있나요?',
+      options: ['헐떡거리거나 호흡이 빨라요', '복부가 팽창했어요', '근육이 약해졌어요', '특별히 없어요'],
+      emergencyTriggers: ['복부가 팽창했어요'],
     },
   ],
 }
@@ -322,11 +477,14 @@ export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfil
   }
 
   const questions: Question[] = []
+  const primary = sorted[0]
   for (const sys of sorted) {
-    questions.push(...QUESTION_BANKS[sys].slice(0, 2))
+    // 주 증상은 모든 질문, 부가 증상은 최대 3개
+    const limit = sys === primary ? Infinity : 3
+    questions.push(...QUESTION_BANKS[sys].slice(0, limit))
   }
   if (!systems.includes('general')) {
-    questions.push(QUESTION_BANKS.general[0])
+    questions.push(QUESTION_BANKS.general[0], QUESTION_BANKS.general[1])
   }
 
   // 구토 + 설사 동시 감지 시 탈수 체크 질문을 앞에 삽입
@@ -388,7 +546,13 @@ export function assessUrgency(questions: Question[], answers: Record<string, str
   return 'watch'
 }
 
-export function makeResultMessage(urgency: UrgencyLevel, systems: QuestionSystem[], petName: string): string {
+export function makeResultMessage(
+  urgency: UrgencyLevel,
+  systems: QuestionSystem[],
+  petName: string,
+  questions?: Question[],
+  answers?: Record<string, string>,
+): string {
   const name = petName || '반려동물'
 
   if (urgency === 'emergency') {
@@ -401,51 +565,293 @@ export function makeResultMessage(urgency: UrgencyLevel, systems: QuestionSystem
       '이동 중에는:',
       '• 조용하고 따뜻하게 유지해주세요',
       '• 억지로 먹이거나 마시게 하지 마세요',
-      '• 전화로 미리 병원에 알려주세요',
+      '• 전화로 미리 병원에 도착 시간을 알려주세요',
     ].join('\n')
   }
 
-  const sysAdvice: Partial<Record<QuestionSystem, string>> = {
-    respiratory: '오늘 중으로 병원에 가보시는 게 좋겠어요.',
-    neurological: '빠른 시일 내 전문의 진료를 권장드려요.',
-    urinary: '내일까지는 병원에 가보세요.',
-    digestive: '1~2일 내 병원 방문을 권장드려요.',
-    skin: '2~3일 내 피부 검사를 받아보세요.',
-    eye: '오늘 중으로 안과 검진을 받으시는 게 좋겠어요.',
-    ear: '2~3일 내 귀 검사를 받아보세요.',
-    orthopedic: '빠른 시일 내 정형외과 진료를 권장드려요.',
-    dental: '1~2주 내 구강 검진 및 스케일링을 고려해보세요.',
-    lump: '빠른 시일 내 세포 검사를 받아보시길 권장해요.',
-    endocrine: '오늘 중으로 혈액 검사를 받아보시길 권장해요.',
-    general: '2~3일 내 병원에 가보시는 게 좋겠어요.',
+  const lines: string[] = []
+  lines.push(urgency === 'caution' ? '🟡 주의 관찰 필요' : '🟢 집에서 관찰 가능')
+  lines.push('')
+
+  // ── 확인된 증상 요약 ──────────────────────────────
+  if (questions && answers && Object.keys(answers).length > 0) {
+    lines.push('[확인된 증상 요약]')
+    for (const q of questions) {
+      const ans = answers[q.id]
+      if (ans) lines.push(`• ${ans}`)
+    }
+    lines.push('')
   }
 
-  if (urgency === 'caution') {
-    const mainSys = systems[0] || 'general'
-    return [
-      '🟡 주의 관찰 필요',
-      '',
-      sysAdvice[mainSys] || sysAdvice.general!,
-      '',
-      '아래 증상이 나타나면 즉시 병원에 가세요:',
-      '• 잇몸이 파랗게 변할 때',
-      '• 경련이나 발작이 생길 때',
-      '• 소변을 전혀 못 볼 때',
-      '• 극도로 무기력해질 때',
-    ].join('\n')
+  // ── 시스템별 임상 소견 ────────────────────────────
+  const clinical = buildClinicalNote(systems, questions, answers)
+  if (clinical.length) {
+    lines.push('[임상 소견]', ...clinical, '')
   }
 
-  return [
-    '🟢 집에서 관찰해보세요',
-    '',
-    `${name}의 증상이 지금 당장 응급한 상황은 아닌 것 같아요.`,
-    '충분한 물과 안정을 취하게 해주시고 24~48시간 관찰해보세요.',
-    '',
-    '다음 증상이 나타나면 바로 병원에 가세요:',
-    '• 증상이 갑자기 심해질 때',
-    '• 밥, 물을 완전히 거부할 때',
-    '• 기력이 급격히 떨어질 때',
-  ].join('\n')
+  // ── 권장 조치 ────────────────────────────────────
+  lines.push('[권장 조치]')
+  lines.push(...buildRecommendation(urgency, systems, questions, answers))
+  lines.push('')
+
+  // ── 병원 방문 시 알려주세요 ────────────────────────
+  const vetInfo = buildVetInfo(systems, questions, answers)
+  if (vetInfo.length) {
+    lines.push('[병원 방문 시 알려주세요]', ...vetInfo, '')
+  }
+
+  // ── 이런 증상이 생기면 즉시 응급실로 ─────────────
+  lines.push('[즉시 응급실로 가야 할 증상]')
+  lines.push(...buildRedFlags(systems))
+
+  return lines.join('\n')
+}
+
+function buildClinicalNote(
+  systems: QuestionSystem[],
+  questions?: Question[],
+  answers?: Record<string, string>,
+): string[] {
+  const ans = answers ?? {}
+  const lines: string[] = []
+
+  if (systems.includes('digestive')) {
+    const freq = ans['dige_freq']
+    const blood = ans['dige_blood']
+    const vomitType = ans['dige_vomit_type']
+    const stool = ans['dige_stool']
+    const cause = ans['dige_cause']
+    const eat = ans['dige_eat']
+    const onset = ans['dige_onset']
+
+    if (vomitType === '노랗거나 거품 같아요 (담즙)') {
+      lines.push('• 담즙성 구토: 공복 시간이 길거나 담즙역류 가능성이 있어요.')
+    } else if (vomitType === '먹은 음식이 나와요') {
+      lines.push('• 섭취 후 짧은 시간 내 구토: 위장 자극 또는 과식 가능성이에요.')
+    }
+    if (stool === '물처럼 흘러요') {
+      lines.push('• 수양성 설사: 탈수가 빠르게 진행될 수 있어요.')
+    } else if (stool === '묽거나 죽처럼 풀어져요') {
+      lines.push('• 연변: 장 점막 자극 또는 식이성 원인을 고려할 수 있어요.')
+    }
+    if (blood === '구토에 피가 보여요' || blood === '대변에 피가 섞여요') {
+      lines.push('• 출혈 동반: 소화관 출혈 가능성 — 우선순위 높은 검사가 필요해요.')
+    }
+    if (cause === '뭔가를 삼켰을 수 있어요') {
+      lines.push('• 이물 섭취 가능성: 내시경 또는 방사선 촬영으로 확인이 필요할 수 있어요.')
+    }
+    if (freq === '하루 3~5회' && (eat === '거의 안 먹어요' || eat === '아무것도 안 먹어요')) {
+      lines.push('• 잦은 구토/설사와 식욕 저하의 조합은 급성 위장염 가능성이 높아요.')
+    }
+    if (onset === '오늘 갑자기 시작됐어요') {
+      lines.push('• 급성 발병: 식이성 원인, 이물, 감염 등을 감별해야 해요.')
+    }
+  }
+
+  if (systems.includes('respiratory')) {
+    const gum = ans['resp_gum']
+    const effort = ans['resp_effort']
+    const coughType = ans['resp_cough_type']
+    const when = ans['resp_when']
+
+    if (gum === '창백하거나 흰색이에요') {
+      lines.push('• 창백한 잇몸: 빈혈 또는 순환 장애 가능성 — 빠른 진료가 필요해요.')
+    }
+    if (effort === '많이 헐떡거려요' && when === '밤이나 새벽에 심해요') {
+      lines.push('• 야간 호흡 곤란: 심부전이나 폐부종 가능성을 배제해야 해요.')
+    }
+    if (coughType === '기침 후 구토해요') {
+      lines.push('• 기침 후 구토: 심한 기관지 자극 또는 역류 가능성이에요.')
+    }
+    if (coughType === '가래가 끓는 듯한 기침이에요') {
+      lines.push('• 습성 기침: 하부 기도 감염이나 폐 문제를 고려해야 해요.')
+    }
+  }
+
+  if (systems.includes('urinary')) {
+    const output = ans['uri_output']
+    const color = ans['uri_color']
+    const pain = ans['uri_pain']
+    const drink = ans['uri_drink']
+
+    if (output === '찔끔씩 자주 시도해요') {
+      lines.push('• 빈뇨·배뇨 곤란: 방광염 또는 요로결석 가능성이 높아요.')
+    }
+    if (color === '빨갛거나 분홍색이에요') {
+      lines.push('• 혈뇨: 방광염, 결석, 종양 등 다양한 원인이 있어요. 소변 검사가 필수예요.')
+    }
+    if (pain === '울거나 끙끙거려요') {
+      lines.push('• 배뇨 시 통증: 하부 요로 염증이나 결석에 의한 자극 신호예요.')
+    }
+    if (drink === '평소보다 훨씬 많이 마셔요') {
+      lines.push('• 다음다뇨(물 많이 마시고 소변 많이): 신장 질환, 당뇨, 쿠싱 등 내분비 질환 감별이 필요해요.')
+    }
+  }
+
+  if (systems.includes('orthopedic')) {
+    const leg = ans['ortho_leg']
+    const onset = ans['ortho_onset']
+    const weight = ans['ortho_weight']
+
+    if (leg === '뒷다리 한쪽' && onset === '서서히 심해졌어요') {
+      lines.push('• 뒷다리 점진적 파행: 슬개골 탈구 또는 고관절 이형성 가능성이 있어요.')
+    }
+    if (weight === '전혀 못 써요') {
+      lines.push('• 완전 파행: 골절, 인대 파열, 또는 척추 문제 가능성 — 빠른 방사선 촬영이 필요해요.')
+    }
+  }
+
+  if (systems.includes('lump')) {
+    const feel = ans['lump_feel']
+    const surface = ans['lump_surface']
+    const size = ans['lump_size']
+
+    if (feel === '딱딱하고 고정돼 있어요') {
+      lines.push('• 딱딱하고 고정된 혹: 악성 가능성을 배제하기 위해 세포 검사가 필요해요.')
+    }
+    if (surface === '궤양이나 상처가 있어요' || surface === '분비물이 나와요') {
+      lines.push('• 표면 궤양 또는 분비물: 감염이나 악성 변환 가능성 — 즉시 확인이 필요해요.')
+    }
+    if (size === '골프공 이상') {
+      lines.push('• 큰 크기의 혹: 크기 자체가 진단 우선순위를 높여요.')
+    }
+  }
+
+  if (systems.includes('endocrine')) {
+    const symptom = ans['endo_symptom']
+    const weightPeriod = ans['endo_weight_period']
+
+    if (symptom === '물을 엄청 많이 마셔요') {
+      lines.push('• 다음다뇨: 당뇨, 쿠싱 증후군, 신부전의 주요 증상이에요. 혈액 + 소변 검사가 필요해요.')
+    }
+    if (symptom === '배만 볼록하게 나왔어요') {
+      lines.push('• 복부 팽창: 부신 피질 기능 항진증(쿠싱) 또는 복강 내 종괴 가능성이에요.')
+    }
+    if (weightPeriod === '1~2주 안에 눈에 띄게') {
+      lines.push('• 빠른 체중 감소: 심각한 내과 질환의 신호일 수 있어요.')
+    }
+  }
+
+  return lines
+}
+
+function buildRecommendation(
+  urgency: UrgencyLevel,
+  systems: QuestionSystem[],
+  questions?: Question[],
+  answers?: Record<string, string>,
+): string[] {
+  const ans = answers ?? {}
+  const lines: string[] = []
+
+  const timingMap: Partial<Record<QuestionSystem, { caution: string; watch: string }>> = {
+    respiratory: { caution: '오늘 중으로 진료를 받으세요.', watch: '24시간 내 상태 변화를 주시하세요.' },
+    neurological: { caution: '오늘 중으로 신경과 전문 진료를 받으세요.', watch: '재발 시 즉시 병원에 가세요.' },
+    urinary: { caution: '오늘~내일 중 소변 검사를 받으세요.', watch: '24시간 내 소변량을 확인하세요.' },
+    digestive: { caution: '오늘~내일 중 진료를 받으세요.', watch: '12~24시간 소식(少食)으로 장을 쉬게 하세요.' },
+    skin: { caution: '2~3일 내 피부 검사를 받으세요.', watch: '핥거나 긁지 못하게 넥카라를 씌워주세요.' },
+    eye: { caution: '오늘 중으로 안과 검진을 받으세요.', watch: '눈 주변을 청결하게 닦아주세요.' },
+    ear: { caution: '2~3일 내 귀 검사를 받으세요.', watch: '귀 안에 물이 들어가지 않게 주의하세요.' },
+    orthopedic: { caution: '오늘~내일 중 방사선 촬영을 받으세요.', watch: '안정을 취하고 계단·점프를 제한하세요.' },
+    dental: { caution: '1주일 내 구강 검진을 받으세요.', watch: '딱딱한 간식을 피하고 치아를 확인하세요.' },
+    lump: { caution: '1주일 내 세포 검사를 받으세요.', watch: '크기 변화를 사진으로 기록해두세요.' },
+    endocrine: { caution: '오늘~내일 중 혈액·소변 검사를 받으세요.', watch: '물 섭취량과 소변량을 기록하세요.' },
+    general: { caution: '24~48시간 내 진료를 받으세요.', watch: '수분 섭취와 활기를 주시하세요.' },
+  }
+
+  const primary = systems[0] ?? 'general'
+  const timing = timingMap[primary] ?? timingMap.general!
+
+  lines.push(urgency === 'caution' ? `▶ ${timing.caution}` : `▶ ${timing.watch}`)
+
+  // 소화기 특이 지침
+  if (systems.includes('digestive')) {
+    const eat = ans['dige_eat']
+    if (eat === '거의 안 먹어요' || eat === '아무것도 안 먹어요') {
+      lines.push('▶ 12시간 절식 후 소화하기 쉬운 음식(닭가슴살 + 흰쌀죽)을 소량 급여해보세요.')
+    }
+    if (ans['dige_blood'] === '구토에 피가 보여요' || ans['dige_blood'] === '대변에 피가 섞여요') {
+      lines.push('▶ 혈성 구토/설사가 있으므로 절식하고 오늘 중 병원에 가세요.')
+    }
+  }
+
+  // 정형외과 특이 지침
+  if (systems.includes('orthopedic') && ans['ortho_weight'] === '전혀 못 써요') {
+    lines.push('▶ 다리를 전혀 못 쓰는 경우 이동 시 안아서 이동하고 스스로 걷게 하지 마세요.')
+  }
+
+  return lines
+}
+
+function buildVetInfo(
+  systems: QuestionSystem[],
+  questions?: Question[],
+  answers?: Record<string, string>,
+): string[] {
+  const ans = answers ?? {}
+  const lines: string[] = []
+  const tests: string[] = []
+  const info: string[] = []
+
+  if (systems.includes('digestive')) {
+    info.push('증상 시작 시각, 구토 횟수, 구토물 색깔')
+    if (ans['dige_cause'] === '뭔가를 삼켰을 수 있어요') info.push('삼켰을 가능성이 있는 물건')
+    tests.push('복부 신체검사 및 방사선 촬영', '혈액검사 (염증 수치, 신장·간 기능)')
+    if (ans['dige_blood']) tests.push('필요 시 내시경 또는 초음파')
+  }
+
+  if (systems.includes('respiratory')) {
+    info.push('기침 영상(가능하다면 동영상 촬영)')
+    tests.push('흉부 방사선 촬영', '필요 시 심장초음파')
+  }
+
+  if (systems.includes('urinary')) {
+    info.push('소변 샘플 (아침 첫 소변을 깨끗한 용기에)')
+    tests.push('소변 검사 (비중, 혈뇨, 결정)', '필요 시 방광 초음파')
+  }
+
+  if (systems.includes('orthopedic')) {
+    info.push('절기 시작 시각, 외상 여부')
+    tests.push('방사선 촬영 (골절·관절 이상 확인)')
+  }
+
+  if (systems.includes('lump')) {
+    info.push('혹 발견 시기, 크기 변화 사진')
+    tests.push('세침흡인세포검사(FNA) 또는 조직 생검')
+  }
+
+  if (systems.includes('endocrine')) {
+    info.push('음수량·소변량 일간 기록, 체중 변화 추이')
+    tests.push('혈액검사 (혈당, 코르티솔, 갑상선, 신장 기능)', '소변 검사')
+  }
+
+  if (info.length) lines.push('• 알릴 정보: ' + info.join(' / '))
+  if (tests.length) lines.push('• 예상 검사: ' + tests.join(' / '))
+
+  return lines
+}
+
+function buildRedFlags(systems: QuestionSystem[]): string[] {
+  const common = [
+    '• 잇몸이 파랗거나 보라색으로 변할 때',
+    '• 경련·발작이 시작될 때',
+    '• 완전히 쓰러져 일어나지 못할 때',
+  ]
+  const specific: Partial<Record<QuestionSystem, string[]>> = {
+    digestive: ['• 구토나 설사에 선홍색 피가 다량 섞일 때', '• 배가 딱딱하게 부풀어 오를 때'],
+    respiratory: ['• 입술·혀가 파랗게 변할 때', '• 앉은 채로 팔꿈치를 벌리고 숨 쉴 때'],
+    urinary: ['• 12시간 이상 소변을 전혀 못 볼 때', '• 배를 만지면 비명을 지를 때'],
+    orthopedic: ['• 갑자기 뒷다리를 전혀 못 쓰게 될 때', '• 척추 통증으로 움직임을 거부할 때'],
+    lump: ['• 혹에서 피나 고름이 흘러나올 때', '• 하루 사이에 혹이 눈에 띄게 커질 때'],
+    neurological: ['• 발작이 5분 이상 지속될 때', '• 발작 후 30분 이상 의식이 돌아오지 않을 때'],
+  }
+
+  const extra: string[] = []
+  for (const sys of systems) {
+    extra.push(...(specific[sys] ?? []))
+  }
+
+  return [...common, ...extra]
 }
 
 // ─── 행동학 분석 ─────────────────────────────────────────────
