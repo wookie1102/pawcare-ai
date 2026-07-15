@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, MessageCircle, Pill, MapPin, User } from 'lucide-react'
+import { Home, ClipboardList, Pill, MapPin, User } from 'lucide-react'
 
 const navItems = [
   { href: '/home', icon: Home, label: '홈' },
-  { href: '/history', icon: MessageCircle, label: '상담기록' },
+  { href: '/health', icon: ClipboardList, label: '건강일지' },
   { href: '/prescription', icon: Pill, label: '처방전' },
   { href: '/hospitals', icon: MapPin, label: '병원찾기' },
   { href: '/profile', icon: User, label: '내정보' },
