@@ -109,11 +109,11 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
   ],
   neurological: [
     {
-      id: 'neuro_seizure',
+      id: 'neuro_type',
       system: 'neurological',
-      text: '경련이나 발작이 있었나요?',
-      options: ['네, 경련이 있었어요', '몸을 심하게 떨었어요', '비틀거리거나 쓰러졌어요', '의식을 잃었어요'],
-      emergencyTriggers: ['네, 경련이 있었어요', '의식을 잃었어요'],
+      text: '어떤 증상이 나타났나요?',
+      options: ['전신 경련·발작이에요', '한쪽으로 기울거나 빙빙 돌아요 (전정)', '비틀거리거나 걷기 어려워요', '의식을 잃었어요'],
+      emergencyTriggers: ['전신 경련·발작이에요', '의식을 잃었어요'],
     },
     {
       id: 'neuro_duration',
@@ -125,16 +125,29 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
     {
       id: 'neuro_after',
       system: 'neurological',
-      text: '경련·발작 후 상태는 어떤가요?',
-      options: ['바로 회복됐어요', '멍하거나 비틀거려요 (수분 내)', '몇 시간째 이상해요', '아직 회복 못 했어요'],
+      text: '증상 직후 상태는 어떤가요?',
+      options: ['바로 정상으로 돌아왔어요', '멍하거나 비틀거려요 (수분 내)', '몇 시간째 이상해요', '아직 회복 못 했어요'],
       emergencyTriggers: ['아직 회복 못 했어요'],
     },
     {
       id: 'neuro_first',
       system: 'neurological',
       text: '이런 증상이 처음인가요?',
-      options: ['처음이에요', '이전에도 있었어요 (6개월 이상 전)', '최근 반복되고 있어요', '점점 잦아지고 있어요'],
+      options: ['처음이에요', '이전에도 있었어요 (6개월 이상 전)', '최근 반복되고 있어요 (월 1회 이상)', '점점 잦아지고 있어요'],
       emergencyTriggers: ['점점 잦아지고 있어요'],
+    },
+    {
+      id: 'neuro_video',
+      system: 'neurological',
+      text: '발작·경련 영상을 촬영하셨나요?',
+      options: ['촬영했어요', '촬영 못 했어요', '이미 끝났어요', '지금도 증상이 있어요'],
+      emergencyTriggers: ['지금도 증상이 있어요'],
+    },
+    {
+      id: 'neuro_meds',
+      system: 'neurological',
+      text: '현재 복용 중인 약이 있나요?',
+      options: ['항경련제 복용 중이에요', '다른 약을 먹고 있어요', '없어요', '잘 모르겠어요'],
     },
   ],
   urinary: [
@@ -416,14 +429,27 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       id: 'dental_gum_color',
       system: 'dental',
       text: '잇몸 색깔이 어떤가요?',
-      options: ['분홍색 (정상)', '빨갛거나 보라색이에요', '하얗거나 창백해요', '잘 모르겠어요'],
-      emergencyTriggers: ['빨갛거나 보라색이에요'],
+      options: ['분홍색 (정상)', '빨갛거나 진한 빨강이에요', '하얗거나 창백해요', '잘 모르겠어요'],
+      emergencyTriggers: ['하얗거나 창백해요'],
+    },
+    {
+      id: 'dental_mouth_open',
+      system: 'dental',
+      text: '입 주변이나 얼굴이 부어있나요?',
+      options: ['턱 아래나 뺨이 부어있어요', '코나 눈 아래가 부어있어요', '없어요', '잘 모르겠어요'],
+      emergencyTriggers: ['코나 눈 아래가 부어있어요'],
     },
     {
       id: 'dental_duration',
       system: 'dental',
-      text: '마지막으로 스케일링을 받은 게 언제인가요?',
-      options: ['1년 이내', '2~3년 됐어요', '한 번도 안 받았어요', '모르겠어요'],
+      text: '마지막으로 스케일링(전신마취 하의 치과 처치)을 받은 게 언제인가요?',
+      options: ['1년 이내', '2~3년 됐어요', '한 번도 안 받았어요', '무마취 스케일링만 받았어요'],
+    },
+    {
+      id: 'dental_systemic',
+      system: 'dental',
+      text: '기존에 심장병이나 신부전이 있나요?',
+      options: ['심장병이 있어요', '신부전이 있어요', '둘 다 있어요', '없어요'],
     },
   ],
   lump: [
@@ -826,16 +852,57 @@ function buildClinicalNote(
     }
   }
 
+  if (systems.includes('neurological')) {
+    const type = ans['neuro_type']
+    const duration = ans['neuro_duration']
+    const after = ans['neuro_after']
+    const first = ans['neuro_first']
+    const meds = ans['neuro_meds']
+
+    if (type === '한쪽으로 기울거나 빙빙 돌아요 (전정)') {
+      lines.push('• 전정 증상 (머리 기울기, 안구진탕, 빙빙 돌기): 말초성(내이 문제) 또는 중추성(뇌 문제) 전정 질환 감별이 필요해요.')
+      lines.push('  → 안구진탕 방향이 빠른 면: 말초성이면 1~2주 내 자연 개선 가능, 중추성이면 MRI 필요.')
+    }
+    if (type === '전신 경련·발작이에요') {
+      lines.push('• 발작 원인 분류: 간질(특발성) vs 증상성(뇌 병변, 대사 이상)을 감별해야 해요.')
+      lines.push('  → 5세 이하 첫 발작 → 구조적 뇌 질환 or 특발성 간질 고려')
+      lines.push('  → 7세 이상 첫 발작 → 뇌종양·뇌염 가능성이 더 높아요')
+    }
+    if (duration === '계속 반복돼요') {
+      lines.push('• 군발 발작(짧은 시간에 반복): 뇌에 심각한 손상을 줄 수 있어요. 즉시 응급 처치가 필요해요.')
+    }
+    if (after === '몇 시간째 이상해요') {
+      lines.push('• 발작 후 오래 지속되는 이상 상태: 발작 자체보다 뇌 손상이 더 심할 수 있어요.')
+    }
+    if (first === '점점 잦아지고 있어요') {
+      lines.push('• 발작 빈도 증가: 항경련제 용량 조정 또는 기저 질환 악화 가능성 — 신경과 전문의 상담 필요.')
+    }
+    if (meds === '항경련제 복용 중이에요') {
+      lines.push('• 항경련제 복용 중 발작 재발: 약 용량 조정 또는 약 변경이 필요할 수 있어요. 현재 약 이름과 용량을 병원에 알려주세요.')
+    }
+    lines.push('• 발작 동영상이 있다면 반드시 병원에 보여주세요 — 발작 유형 분류에 매우 중요한 자료예요.')
+  }
+
   if (systems.includes('orthopedic')) {
     const leg = ans['ortho_leg']
     const onset = ans['ortho_onset']
     const weight = ans['ortho_weight']
+    const when = ans['ortho_when']
 
     if (leg === '뒷다리 한쪽' && onset === '서서히 심해졌어요') {
       lines.push('• 뒷다리 점진적 파행: 슬개골 탈구 또는 고관절 이형성 가능성이 있어요.')
     }
+    if (leg === '다리보다 허리·등이 문제인 것 같아요') {
+      lines.push('• 허리·척추 통증: 추간판 질환(디스크) 또는 척추 관절 문제일 수 있어요. 방사선 후 MRI 고려.')
+    }
+    if (onset === '갑자기 못 쓰게 됐어요') {
+      lines.push('• 급성 마비: 척추 디스크 탈출 가능성 — 수술 여부는 마비 정도와 시간에 달려있어요. 빠를수록 예후가 좋아요.')
+    }
+    if (when === '아침에 일어날 때 심해요') {
+      lines.push('• 기상 시 뻣뻣함: 퇴행성 관절염의 전형적 패턴이에요.')
+    }
     if (weight === '전혀 못 써요') {
-      lines.push('• 완전 파행: 골절, 인대 파열, 또는 척추 문제 가능성 — 빠른 방사선 촬영이 필요해요.')
+      lines.push('• 완전 파행: 골절, 인대 파열, 또는 척추 문제 가능성 — 방사선 촬영이 우선이에요.')
     }
   }
 
@@ -901,6 +968,59 @@ function buildClinicalNote(
     }
     if (other === '복부가 팽창했어요') {
       lines.push('• 복부 팽창: 쿠싱 또는 복강 내 액체 축적 가능성 — 초음파 검사 권장.')
+    }
+  }
+
+  if (systems.includes('dental')) {
+    const look = ans['dental_look']
+    const eat = ans['dental_eat']
+    const gumColor = ans['dental_gum_color']
+    const mouthOpen = ans['dental_mouth_open']
+    const duration = ans['dental_duration']
+    const systemic = ans['dental_systemic']
+
+    if (look === '이빨이 흔들려요') {
+      lines.push('• 동요치(흔들리는 이빨): 치주 질환 말기 또는 외상 — 발치가 필요한 경우가 많아요.')
+    }
+    if (mouthOpen === '코나 눈 아래가 부어있어요') {
+      lines.push('• 얼굴 부종(코·눈 아래): 치근 농양이 주변으로 퍼진 가능성 — 즉시 진료 필요. 항생제 + 발치 치료가 필요해요.')
+    }
+    if (mouthOpen === '턱 아래나 뺨이 부어있어요') {
+      lines.push('• 턱·뺨 부종: 치근 주위 농양 가능성 — 치과 방사선 촬영으로 확인 필요.')
+    }
+    if (duration === '무마취 스케일링만 받았어요') {
+      lines.push('• 무마취 스케일링: 치아 표면만 청소하며 잇몸 아래 치주 병변은 확인·치료가 불가능해요. 전신마취 하의 정식 치과 처치가 필요해요.')
+    }
+    if (eat === '밥 먹기 힘들어해요' || eat === '한쪽으로만 씹어요') {
+      lines.push('• 식이 영향 동반: 구강 통증이 식욕에 영향을 주고 있어요. 치과 치료 후 개선되는 경우가 많아요.')
+    }
+    if (systemic === '심장병이 있어요' || systemic === '신부전이 있어요' || systemic === '둘 다 있어요') {
+      lines.push('• 기저 질환 + 치과 질환: 치주 질환은 심장병·신부전을 악화시킬 수 있어요. 국소마취 병행으로 전신마취 부담을 줄이는 방법을 담당의와 상의하세요.')
+    }
+    lines.push('• babungee 원칙: 육안 검사만으로는 치과 진단이 불완전해요. 치과 방사선 촬영(전신마취 하)이 필수예요.')
+  }
+
+  if (systems.includes('skin')) {
+    const where = ans['skin_where']
+    const look = ans['skin_look']
+    const onset = ans['skin_onset']
+    const smell = ans['skin_smell']
+
+    if (onset === '새 간식·사료 바꾼 뒤 시작됐어요') {
+      lines.push('• 식이 알레르기 가능성: 새 사료·간식 도입 후 시작됐다면 해당 식품을 즉시 중단하고 단백질 원을 바꿔보세요.')
+      lines.push('  → 진단을 위해서는 가수분해 단백질 사료로 8~12주 식이 시험이 필요해요.')
+    }
+    if (onset === '특정 계절에만 심해요') {
+      lines.push('• 계절성 알레르기: 환경적 알레르겐(꽃가루, 먼지) 가능성이 높아요.')
+    }
+    if (where === '발바닥·발 사이') {
+      lines.push('• 발 핥기: 알레르기성 족부 피부염이에요. 장기간 지속 시 세균 감염이 동반돼 만성화되는 경우가 많아요.')
+    }
+    if (smell === '고름 냄새가 나요') {
+      lines.push('• 농성 분비물: 농피증(세균성 피부 감염) 가능성 — 항생제 치료가 필요해요. 세균 배양·감수성 검사를 권장해요.')
+    }
+    if (look === '오래됐는데 점점 심해져요' || onset === '오래됐는데 점점 심해져요') {
+      lines.push('• 만성 진행성 피부 질환: 알레르기, 세균, 곰팡이, 면역 이상이 복합적으로 섞인 경우가 많아요. 복합 검사가 필요해요.')
     }
   }
 
@@ -1007,6 +1127,28 @@ function buildRecommendation(
     }
   }
 
+  // 신경계 특이 지침
+  if (systems.includes('neurological')) {
+    const type = ans['neuro_type']
+    const duration = ans['neuro_duration']
+    lines.push('▶ 발작이 일어나는 동안: 억지로 잡거나 입안에 손을 넣지 마세요. 주변 위험물만 치워주세요.')
+    lines.push('▶ 발작이 5분 이상 지속되면 즉시 응급 병원으로 이동하세요.')
+    lines.push('▶ 다음 발작 시 스마트폰으로 영상 촬영 — 병원 진단에 매우 중요해요.')
+    if (ans['neuro_meds'] === '항경련제 복용 중이에요') {
+      lines.push('▶ 항경련제는 임의로 중단하거나 용량을 변경하지 마세요.')
+    }
+  }
+
+  // 치과 특이 지침
+  if (systems.includes('dental')) {
+    const systemic = ans['dental_systemic']
+    lines.push('▶ 딱딱한 간식(뼈, 사슴뿔 등)은 치아 파절의 원인이 될 수 있어요. 치료 전까지 피해주세요.')
+    lines.push('▶ 습식 사료나 물에 불린 사료로 급여해서 씹는 부담을 줄여주세요.')
+    if (systemic === '심장병이 있어요' || systemic === '신부전이 있어요') {
+      lines.push('▶ 기저 질환이 있는 경우 마취 전 심장·신장 기능 평가가 필수예요. 치과 전문 병원 또는 2차 병원 방문을 권장해요.')
+    }
+  }
+
   // 종양 특이 지침
   if (systems.includes('lump')) {
     lines.push('▶ 혹의 크기 변화를 사진으로 날짜별로 기록해두세요.')
@@ -1097,6 +1239,41 @@ function buildVetInfo(
     if (ans['endo_symptom'] === '배만 볼록하게 나왔어요') {
       tests.push('쿠싱 확진: LDDST(저용량 덱사메타손 억제 검사) + 복부 초음파')
     }
+  }
+
+  if (systems.includes('neurological')) {
+    info.push('발작 동영상 (스마트폰으로 촬영한 것)')
+    info.push('발작 시작 시각, 지속 시간, 횟수')
+    info.push('발작 직전 행동 (전조 증상)')
+    if (ans['neuro_meds'] === '항경련제 복용 중이에요') {
+      info.push('현재 복용 중인 항경련제 이름 + 용량')
+    }
+    tests.push('혈액검사 (혈당, 칼슘, 신장·간 기능 — 대사성 원인 배제)')
+    tests.push('신경계 이상 의심 시: MRI 또는 CT (뇌 종양·염증·구조적 이상)')
+    if (ans['neuro_first'] === '처음이에요') {
+      tests.push('첫 발작 시: 혈액·소변 검사 우선 → 원인 불명 시 MRI')
+    }
+  }
+
+  if (systems.includes('dental')) {
+    info.push('마지막 스케일링(전신마취 치과 처치) 날짜')
+    info.push('식욕 변화, 한쪽으로만 씹는지 여부')
+    if (ans['dental_systemic'] && ans['dental_systemic'] !== '없어요') {
+      info.push(`기저 질환: ${ans['dental_systemic']} — 마취 위험도에 영향이 있어요`)
+    }
+    tests.push('구강 검사 (전신마취 하의 치과 방사선 촬영 필수)')
+    tests.push('⚠️ 무마취 스케일링은 잇몸 아래 병변을 확인할 수 없어요 — 전신마취 하의 정식 치과 처치 권장')
+    if (ans['dental_mouth_open'] && ans['dental_mouth_open'] !== '없어요') {
+      tests.push('얼굴 부종 동반 시: 방사선 촬영으로 치근 농양·뼈 흡수 여부 확인')
+    }
+  }
+
+  if (systems.includes('skin')) {
+    info.push('가려움 시작 시점, 계절적 패턴 여부')
+    info.push('최근 바뀐 사료·간식·샴푸·환경')
+    tests.push('피부 스크래핑 검사 (기생충·곰팡이 확인)')
+    tests.push('세균 감염 의심 시: 세균 배양·감수성 검사')
+    tests.push('식이 알레르기 의심 시: 가수분해 단백질 사료로 8~12주 식이 시험')
   }
 
   if (info.length) lines.push('• 알릴 정보: ' + info.join(' / '))
