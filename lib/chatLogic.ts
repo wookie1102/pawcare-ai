@@ -173,6 +173,12 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       options: ['한 번만 했어요', '하루 1~2회', '하루 3~5회', '하루 6회 이상'],
     },
     {
+      id: 'dige_vomit_timing',
+      system: 'digestive',
+      text: '구토가 언제 일어나나요? (구토가 없으면 마지막 선택)',
+      options: ['밥 먹은 직후 바로 토해요', '밥 먹고 1시간 이상 지나서 토해요', '빈속에(공복에) 토해요', '구토는 없어요'],
+    },
+    {
       id: 'dige_vomit_type',
       system: 'digestive',
       text: '구토물이 어떻게 생겼나요? (구토가 없으면 마지막 선택)',
@@ -185,6 +191,12 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       options: ['정상이에요', '묽거나 죽처럼 풀어져요', '물처럼 흘러요', '대변을 못 봤어요'],
     },
     {
+      id: 'dige_stool_color',
+      system: 'digestive',
+      text: '대변 색깔이 어떤가요? (설사가 없으면 마지막 선택)',
+      options: ['갈색 (정상)', '검은색이에요 (타르 같아요)', '선홍색 피가 섞여요', '노랗거나 회색이에요'],
+    },
+    {
       id: 'dige_blood',
       system: 'digestive',
       text: '구토물이나 대변에 피가 섞여 있나요?',
@@ -195,6 +207,19 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'digestive',
       text: '밥과 물을 먹고 있나요?',
       options: ['잘 먹고 마셔요', '물만 조금 마셔요', '거의 안 먹어요', '아무것도 안 먹어요'],
+    },
+    {
+      id: 'dige_vitality',
+      system: 'digestive',
+      text: '구토/설사 후 기운이 어떻게 보이나요?',
+      options: ['비교적 정상이에요', '조금 처져 있어요', '많이 축 처지고 무기력해요', '쓰러지거나 일어나지 못해요'],
+      emergencyTriggers: ['쓰러지거나 일어나지 못해요'],
+    },
+    {
+      id: 'dige_fever',
+      system: 'digestive',
+      text: '몸이 평소보다 뜨겁게 느껴지나요? (발열 확인)',
+      options: ['체온이 정상이에요 (38~39℃)', '약간 따뜻한 것 같아요', '뜨겁게 느껴져요', '모르겠어요'],
     },
     {
       id: 'dige_cause',
@@ -517,12 +542,15 @@ export function assessUrgency(questions: Question[], answers: Record<string, str
     if (ans && q.emergencyTriggers?.includes(ans)) return 'emergency'
   }
 
-  // 혈변/혈토/복부 통증은 emergency 수준으로 상향
+  // 혈변/혈토/복부 통증/흑색변/고열 등은 emergency 수준으로 상향
   const emergencyFromAnswers = [
     '구토에 피가 보여요', '대변에 피가 섞여요',
+    '검은색이에요 (타르 같아요)',
     '많이 아파해요', '배가 빵빵하게 부풀어 있어요',
     '하루 6회 이상',
     '거의 움직이지 않아요', '쓰러져 있어요',
+    '쓰러지거나 일어나지 못해요',
+    '뜨겁게 느껴져요',
   ]
   if (Object.values(answers).some(a => emergencyFromAnswers.includes(a))) return 'emergency'
 
@@ -534,6 +562,10 @@ export function assessUrgency(questions: Question[], answers: Record<string, str
     '물처럼 흘러요', '약간 긴장하거나 피해요',
     '노랗거나 초록색이에요', '빨갛거나 분홍색이에요', '갈색이나 진한 색이에요',
     '많이 아파해요 (피해요)', '전혀 못 써요',
+    // 소화기 (신규)
+    '많이 축 처지고 무기력해요', '선홍색 피가 섞여요', '노랗거나 회색이에요',
+    '약간 따뜻한 것 같아요',
+    '밥 먹고 1시간 이상 지나서 토해요',
     // 피부
     '빨갛게 부어있어요', '털이 빠지거나 벗겨져요', '오래됐는데 점점 심해져요',
     // 눈
@@ -565,17 +597,27 @@ export function makeResultMessage(
   const name = petName || '반려동물'
 
   if (urgency === 'emergency') {
-    return [
-      '⚠️ 지금 바로 응급 병원에 가세요!',
-      '',
-      `${name}의 증상이 응급 상황일 가능성이 높습니다.`,
-      '지체 없이 가장 가까운 동물병원 응급실로 이동해주세요.',
-      '',
-      '이동 중에는:',
-      '• 조용하고 따뜻하게 유지해주세요',
-      '• 억지로 먹이거나 마시게 하지 마세요',
-      '• 전화로 미리 병원에 도착 시간을 알려주세요',
-    ].join('\n')
+    const ans = answers ?? {}
+    const emergLines: string[] = ['⚠️ 지금 바로 응급 병원에 가세요!', '', `${name}의 증상이 응급 상황일 가능성이 높습니다.`, '지체 없이 가장 가까운 동물병원 응급실로 이동해주세요.', '']
+
+    // 원인에 따른 구체적 응급 안내
+    if (ans['dige_blood'] === '구토에 피가 보여요' || ans['dige_stool_color'] === '검은색이에요 (타르 같아요)') {
+      emergLines.push('[주요 소견] 상부 소화관 출혈 가능성 — 혈액검사 + 위장관 초음파/내시경 필요')
+    } else if (ans['dige_blood'] === '대변에 피가 섞여요') {
+      emergLines.push('[주요 소견] 하부 소화관 출혈 가능성 — 신체검사 + 혈액검사 + 대장 평가 필요')
+    } else if (ans['dige_abdomen'] === '배가 빵빵하게 부풀어 있어요') {
+      emergLines.push('[주요 소견] 복부 팽창 — 위확장·염전(GDV) 또는 복수 가능성 배제 필요')
+    } else if (ans['dige_fever'] === '뜨겁게 느껴져요') {
+      emergLines.push('[주요 소견] 발열 + 소화기 증상 — 감염성 장염(파보 포함) 가능성 확인 필요')
+    } else if (ans['resp_gum'] === '파랗거나 보라색이에요') {
+      emergLines.push('[주요 소견] 청색증 — 산소 공급 저하 상태. 산소 치료가 즉시 필요해요.')
+    }
+
+    emergLines.push('', '이동 중에는:')
+    emergLines.push('• 조용하고 따뜻하게 유지해주세요')
+    emergLines.push('• 억지로 먹이거나 마시게 하지 마세요')
+    emergLines.push('• 전화로 미리 병원에 도착 시간을 알려주세요')
+    return emergLines.join('\n')
   }
 
   const lines: string[] = []
@@ -628,29 +670,62 @@ function buildClinicalNote(
     const freq = ans['dige_freq']
     const blood = ans['dige_blood']
     const vomitType = ans['dige_vomit_type']
+    const vomitTiming = ans['dige_vomit_timing']
     const stool = ans['dige_stool']
+    const stoolColor = ans['dige_stool_color']
     const cause = ans['dige_cause']
     const eat = ans['dige_eat']
     const onset = ans['dige_onset']
+    const vitality = ans['dige_vitality']
+    const fever = ans['dige_fever']
 
-    if (vomitType === '노랗거나 거품 같아요 (담즙)') {
-      lines.push('• 담즙성 구토: 공복 시간이 길거나 담즙역류 가능성이 있어요.')
-    } else if (vomitType === '먹은 음식이 나와요') {
-      lines.push('• 섭취 후 짧은 시간 내 구토: 위장 자극 또는 과식 가능성이에요.')
+    // 구토 패턴 분석
+    if (vomitTiming === '빈속에(공복에) 토해요') {
+      lines.push('• 공복 구토: 담즙역류 또는 위산 자극이 원인일 가능성이 높아요. 식사 간격을 줄여보세요.')
+    } else if (vomitTiming === '밥 먹은 직후 바로 토해요') {
+      lines.push('• 식후 즉시 구토: 과식, 급하게 먹음, 또는 위장 자극 가능성이에요. 소량씩 자주 급여해 보세요.')
+    } else if (vomitTiming === '밥 먹고 1시간 이상 지나서 토해요') {
+      lines.push('• 지연성 구토: 위 배출 지연 또는 위염 가능성이 있어요. 먹은 내용물이 나온다면 위 운동 이상도 고려해요.')
     }
+    if (vomitType === '노랗거나 거품 같아요 (담즙)') {
+      lines.push('• 담즙성(노란) 구토: 공복이 길 때 담즙이 역류한 것으로, 위 자극 증상이에요.')
+    } else if (vomitType === '흰 거품이나 침이에요') {
+      lines.push('• 흰 거품 구토: 위산 분비 과다 또는 위장 자극 신호예요.')
+    }
+
+    // 설사 색깔 분석 (검은 변 vs 혈변 구분)
+    if (stoolColor === '검은색이에요 (타르 같아요)') {
+      lines.push('• 흑색변(멜레나): 상부 소화관(위, 소장) 출혈 가능성 — 즉시 진료가 필요해요.')
+    } else if (stoolColor === '선홍색 피가 섞여요') {
+      lines.push('• 혈변(선홍색): 하부 소화관(대장, 직장) 출혈 가능성이에요.')
+    } else if (stoolColor === '노랗거나 회색이에요') {
+      lines.push('• 회색/노란 변: 담즙 분비 이상 또는 췌장·간 문제를 고려할 수 있어요.')
+    }
+
     if (stool === '물처럼 흘러요') {
-      lines.push('• 수양성 설사: 탈수가 빠르게 진행될 수 있어요.')
+      lines.push('• 수양성 설사: 탈수가 빠르게 진행될 수 있어요. 수분 보충이 최우선이에요.')
     } else if (stool === '묽거나 죽처럼 풀어져요') {
       lines.push('• 연변: 장 점막 자극 또는 식이성 원인을 고려할 수 있어요.')
     }
+
     if (blood === '구토에 피가 보여요' || blood === '대변에 피가 섞여요') {
-      lines.push('• 출혈 동반: 소화관 출혈 가능성 — 우선순위 높은 검사가 필요해요.')
+      lines.push('• 출혈 동반: 소화관 출혈 가능성 — 즉시 병원 진료가 필요해요.')
     }
+
+    // 발열 + 소화기 = 감염 가능성
+    if (fever === '뜨겁게 느껴져요') {
+      lines.push('• 발열 동반: 감염성 장염(파보바이러스, 세균성 등) 가능성을 배제해야 해요. 오늘 중 진료를 받으세요.')
+    }
+
+    if (vitality === '많이 축 처지고 무기력해요') {
+      lines.push('• 무기력 동반: 단순 위장 장애를 넘어 전신 영향이 시작된 신호일 수 있어요.')
+    }
+
     if (cause === '뭔가를 삼켰을 수 있어요') {
-      lines.push('• 이물 섭취 가능성: 내시경 또는 방사선 촬영으로 확인이 필요할 수 있어요.')
+      lines.push('• 이물 섭취 가능성: 방사선 촬영으로 이물 위치 및 장 폐색 여부 확인이 필요해요.')
     }
     if (freq === '하루 3~5회' && (eat === '거의 안 먹어요' || eat === '아무것도 안 먹어요')) {
-      lines.push('• 잦은 구토/설사와 식욕 저하의 조합은 급성 위장염 가능성이 높아요.')
+      lines.push('• 잦은 구토/설사 + 식욕 저하: 급성 위장염 가능성이 높아요.')
     }
     if (onset === '오늘 갑자기 시작됐어요') {
       lines.push('• 급성 발병: 식이성 원인, 이물, 감염 등을 감별해야 해요.')
@@ -776,12 +851,31 @@ function buildRecommendation(
   // 소화기 특이 지침
   if (systems.includes('digestive')) {
     const eat = ans['dige_eat']
-    if (eat === '거의 안 먹어요' || eat === '아무것도 안 먹어요') {
-      lines.push('▶ 12시간 절식 후 소화하기 쉬운 음식(닭가슴살 + 흰쌀죽)을 소량 급여해보세요.')
+    const stool = ans['dige_stool']
+    const blood = ans['dige_blood']
+    const stoolColor = ans['dige_stool_color']
+    const freq = ans['dige_freq']
+    const fever = ans['dige_fever']
+
+    if (blood === '구토에 피가 보여요' || blood === '대변에 피가 섞여요' || stoolColor === '검은색이에요 (타르 같아요)') {
+      lines.push('▶ 혈성 구토/혈변이 있으므로 음식을 주지 말고 오늘 중 병원에 가세요.')
+    } else if (fever === '뜨겁게 느껴져요') {
+      lines.push('▶ 발열이 동반됐으므로 오늘 중 진료를 받으세요.')
+    } else if (freq === '하루 3~5회' || freq === '하루 6회 이상') {
+      lines.push('▶ 구토/설사가 잦으므로 오늘~내일 중 진료를 받으세요.')
+      lines.push('▶ 그동안 수분 보충이 중요해요. 닭가슴살 삶은 물(무염)을 조금씩 제공해보세요.')
+    } else if (stool === '물처럼 흘러요') {
+      lines.push('▶ 급성 설사 직후 12~24시간 금식이 도움이 돼요. 소화기관을 쉬게 해주세요.')
+      lines.push('▶ 금식 중에도 신선한 물 또는 닭고기 삶은 물(무염)은 반드시 제공해주세요.')
+      lines.push('▶ 금식 후 재급여 시: 닭가슴살(기름 없이 삶은 것) + 흰쌀죽을 1:1 비율로 소량부터 시작하세요.')
+    } else if (eat === '거의 안 먹어요' || eat === '아무것도 안 먹어요') {
+      lines.push('▶ 12시간 절식 후 닭가슴살(삶은 것) + 흰쌀죽을 1:1 비율로 소량 급여해보세요.')
+      lines.push('▶ 절식 중에도 물은 반드시 제공해주세요.')
     }
-    if (ans['dige_blood'] === '구토에 피가 보여요' || ans['dige_blood'] === '대변에 피가 섞여요') {
-      lines.push('▶ 혈성 구토/설사가 있으므로 절식하고 오늘 중 병원에 가세요.')
+    if (!blood && stool !== '물처럼 흘러요') {
+      lines.push('▶ 설사의 양, 색깔, 횟수를 날짜별로 기록해두세요. 병원 방문 시 중요한 단서가 돼요.')
     }
+    lines.push('▶ 아래 증상이 생기면 지체 없이 응급 병원으로 가세요: 혈변/혈토, 잇몸이 파랗게 변함, 복부 팽창, 완전히 못 일어남.')
   }
 
   // 정형외과 특이 지침
@@ -803,10 +897,19 @@ function buildVetInfo(
   const info: string[] = []
 
   if (systems.includes('digestive')) {
-    info.push('증상 시작 시각, 구토 횟수, 구토물 색깔')
-    if (ans['dige_cause'] === '뭔가를 삼켰을 수 있어요') info.push('삼켰을 가능성이 있는 물건')
-    tests.push('복부 신체검사 및 방사선 촬영', '혈액검사 (염증 수치, 신장·간 기능)')
-    if (ans['dige_blood']) tests.push('필요 시 내시경 또는 초음파')
+    info.push('증상 시작 시각')
+    info.push('구토 횟수 + 구토물 색깔/양 (기록하거나 사진 찍어두세요)')
+    info.push('설사 횟수 + 변 색깔 (갈색/검은색/혈변)')
+    info.push('마지막으로 먹은 것과 시간')
+    if (ans['dige_cause'] === '뭔가를 삼켰을 수 있어요') info.push('삼켰을 가능성이 있는 물건 종류')
+    tests.push('복부 신체검사')
+    tests.push('혈액검사 (염증 수치 CRP, 췌장 수치 CPL, 신장·간 기능)')
+    if (ans['dige_stool'] === '물처럼 흘러요' || ans['dige_freq'] === '하루 3~5회' || ans['dige_freq'] === '하루 6회 이상') {
+      tests.push('복부 방사선 또는 초음파 (이물·장폐색 확인)')
+    }
+    if (ans['dige_blood'] === '구토에 피가 보여요' || ans['dige_blood'] === '대변에 피가 섞여요' || ans['dige_stool_color'] === '검은색이에요 (타르 같아요)') {
+      tests.push('위장관 출혈 평가 (내시경 또는 초음파 우선)')
+    }
   }
 
   if (systems.includes('respiratory')) {
