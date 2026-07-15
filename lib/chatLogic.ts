@@ -67,6 +67,13 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       emergencyTriggers: ['배까지 움직이며 숨 쉬어요', '입으로 숨 쉬어요'],
     },
     {
+      id: 'resp_sleep_rate',
+      system: 'respiratory',
+      text: '잠자는 동안 1분간 숨 쉬는 횟수를 세어보셨나요? (정상: 분당 30회 이하)',
+      options: ['세어보니 30회 이하예요 (정상)', '30~40회 정도예요', '40회 이상이에요', '아직 세어보지 않았어요'],
+      emergencyTriggers: ['40회 이상이에요'],
+    },
+    {
       id: 'resp_cough_type',
       system: 'respiratory',
       text: '기침이 어떤 형태인가요?',
@@ -77,6 +84,13 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'respiratory',
       text: '호흡 증상이 언제 더 심해지나요?',
       options: ['밤이나 새벽에 심해요', '운동 후에 심해요', '항상 비슷해요', '자다가 갑자기 깨요'],
+      emergencyTriggers: ['자다가 갑자기 깨요'],
+    },
+    {
+      id: 'resp_heart_hx',
+      system: 'respiratory',
+      text: '심장병 진단을 받은 적 있나요?',
+      options: ['네, 심장약 복용 중이에요', '심장병은 있는데 약은 없어요', '없어요', '모르겠어요'],
     },
     {
       id: 'resp_duration',
@@ -146,17 +160,30 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       emergencyTriggers: ['울거나 끙끙거려요'],
     },
     {
-      id: 'uri_duration',
+      id: 'uri_freq',
       system: 'urinary',
-      text: '이 증상이 얼마나 됐나요?',
-      options: ['오늘부터예요', '어제부터예요', '2~3일 됐어요', '1주일 이상이에요'],
-      emergencyTriggers: ['어제부터예요', '2~3일 됐어요'],
+      text: '소변 횟수가 어떻게 달라졌나요?',
+      options: ['평소보다 훨씬 자주 봐요', '평소와 비슷해요', '평소보다 훨씬 줄었어요', '거의 못 보고 있어요'],
+      emergencyTriggers: ['거의 못 보고 있어요'],
     },
     {
       id: 'uri_drink',
       system: 'urinary',
       text: '물은 평소보다 많이 마시나요?',
       options: ['평소보다 훨씬 많이 마셔요', '비슷하게 마셔요', '오히려 적게 마셔요', '잘 모르겠어요'],
+    },
+    {
+      id: 'uri_kidney_hx',
+      system: 'urinary',
+      text: '신장(콩팥) 관련 진단을 받은 적 있나요?',
+      options: ['신부전 진단받고 관리 중이에요', '혈액검사에서 수치 이상이 나온 적 있어요', '없어요', '모르겠어요'],
+    },
+    {
+      id: 'uri_duration',
+      system: 'urinary',
+      text: '이 증상이 얼마나 됐나요?',
+      options: ['오늘부터예요', '어제부터예요', '2~3일 됐어요', '1주일 이상이에요'],
+      emergencyTriggers: ['어제부터예요', '2~3일 됐어요'],
     },
   ],
   digestive: [
@@ -737,18 +764,31 @@ function buildClinicalNote(
     const effort = ans['resp_effort']
     const coughType = ans['resp_cough_type']
     const when = ans['resp_when']
+    const sleepRate = ans['resp_sleep_rate']
+    const heartHx = ans['resp_heart_hx']
 
     if (gum === '창백하거나 흰색이에요') {
-      lines.push('• 창백한 잇몸: 빈혈 또는 순환 장애 가능성 — 빠른 진료가 필요해요.')
+      lines.push('• 창백한 잇몸: 빈혈 또는 순환 장애(심부전) 가능성 — 빠른 진료가 필요해요.')
+    }
+    if (sleepRate === '40회 이상이에요') {
+      lines.push('• 수면 중 호흡수 40회 이상: 정상(30회 이하)을 크게 초과 — 폐수종·흉수 가능성. 오늘 응급 진료가 필요해요.')
+    } else if (sleepRate === '30~40회 정도예요') {
+      lines.push('• 수면 중 호흡수 30~40회: 경계 수준입니다. 매일 같은 시간에 재서 기록해 두세요.')
+    }
+    if (heartHx === '네, 심장약 복용 중이에요' || heartHx === '심장병은 있는데 약은 없어요') {
+      lines.push('• 기존 심장 질환 동반: 호흡기 증상이 폐수종(심장성 폐부종)의 신호일 수 있어요. 현재 복용 중인 약 목록을 병원에 가져가세요.')
     }
     if (effort === '많이 헐떡거려요' && when === '밤이나 새벽에 심해요') {
-      lines.push('• 야간 호흡 곤란: 심부전이나 폐부종 가능성을 배제해야 해요.')
+      lines.push('• 야간 호흡 곤란: 심부전 또는 폐부종 가능성을 우선 배제해야 해요.')
+    }
+    if (when === '자다가 갑자기 깨요') {
+      lines.push('• 수면 중 갑작스러운 각성: 호흡 곤란·폐수종의 급성 증상일 수 있어요. 즉시 확인이 필요해요.')
     }
     if (coughType === '기침 후 구토해요') {
-      lines.push('• 기침 후 구토: 심한 기관지 자극 또는 역류 가능성이에요.')
+      lines.push('• 기침 후 구토: 심한 기관지 자극 또는 역류성 기침 가능성이에요.')
     }
     if (coughType === '가래가 끓는 듯한 기침이에요') {
-      lines.push('• 습성 기침: 하부 기도 감염이나 폐 문제를 고려해야 해요.')
+      lines.push('• 습성 기침: 하부 기도 감염, 폐렴, 또는 폐에 액체 축적 가능성이에요.')
     }
   }
 
@@ -757,18 +797,32 @@ function buildClinicalNote(
     const color = ans['uri_color']
     const pain = ans['uri_pain']
     const drink = ans['uri_drink']
+    const kidneyHx = ans['uri_kidney_hx']
+    const freq = ans['uri_freq']
 
-    if (output === '찔끔씩 자주 시도해요') {
-      lines.push('• 빈뇨·배뇨 곤란: 방광염 또는 요로결석 가능성이 높아요.')
+    if (output === '찔끔씩 자주 시도해요' || freq === '평소보다 훨씬 자주 봐요') {
+      lines.push('• 빈뇨·배뇨 곤란: 방광염 또는 요로결석 가능성이 높아요. 아침 첫 소변 샘플 지참 후 진료 권장.')
+    }
+    if (output === '소변량이 많이 줄었어요' || freq === '평소보다 훨씬 줄었어요') {
+      lines.push('• 소변량 감소: 신장 기능 저하 또는 탈수 가능성이에요. CRE(크레아티닌) 수치 확인이 필요해요.')
     }
     if (color === '빨갛거나 분홍색이에요') {
-      lines.push('• 혈뇨: 방광염, 결석, 종양 등 다양한 원인이 있어요. 소변 검사가 필수예요.')
+      lines.push('• 혈뇨: 방광염, 요로결석, 종양 등 다양한 원인 — 소변 검사(비중·침사 검사)가 필수예요.')
+    }
+    if (color === '갈색이나 진한 색이에요') {
+      lines.push('• 갈색 소변: 근육 손상(미오글로빈뇨) 또는 용혈성 빈혈 가능성 — 즉시 진료 필요.')
     }
     if (pain === '울거나 끙끙거려요') {
       lines.push('• 배뇨 시 통증: 하부 요로 염증이나 결석에 의한 자극 신호예요.')
     }
     if (drink === '평소보다 훨씬 많이 마셔요') {
-      lines.push('• 다음다뇨(물 많이 마시고 소변 많이): 신장 질환, 당뇨, 쿠싱 등 내분비 질환 감별이 필요해요.')
+      lines.push('• 다음다뇨(물 많이 마시고 소변 많이): 신장 질환, 당뇨, 쿠싱 증후군 감별이 필요해요.')
+      lines.push('  → 신장 질환이라면: CRE(크레아티닌) + SDMA 수치 확인이 우선이에요.')
+      lines.push('  → 쿠싱이라면: ALKP(ALP) 상승 + 복부 팽창 여부도 같이 확인하세요.')
+    }
+    if (kidneyHx === '신부전 진단받고 관리 중이에요') {
+      lines.push('• 기존 신부전 환자: CRE·SDMA 수치 변화, 혈압, 인(P) 수치가 핵심 모니터링 지표예요.')
+      lines.push('  → babungee 원칙: "CRE랑 고혈압 먼저 — BUN은 나중"')
     }
   }
 
@@ -789,30 +843,64 @@ function buildClinicalNote(
     const feel = ans['lump_feel']
     const surface = ans['lump_surface']
     const size = ans['lump_size']
+    const where = ans['lump_where']
+    const when = ans['lump_when']
+
+    // 위치에 따른 특이 소견
+    if (where === '유선 주변 (젖꼭지 근처)') {
+      lines.push('• 유선 혹: 암컷(특히 미중성화)에서 유선종양 발생률이 높아요. 악성 비율이 약 50% — 즉시 세침흡인세포검사(FNA)를 권장해요.')
+    }
 
     if (feel === '딱딱하고 고정돼 있어요') {
-      lines.push('• 딱딱하고 고정된 혹: 악성 가능성을 배제하기 위해 세포 검사가 필요해요.')
+      lines.push('• 딱딱하고 고정된 혹: 악성 종양 가능성이 높아요. 반드시 세침흡인세포검사(FNA) 또는 조직 생검이 필요해요.')
+    } else if (feel === '말랑하고 잘 움직여요') {
+      lines.push('• 말랑하고 움직이는 혹: 지방종이나 낭종 가능성이 있지만 크기가 크거나 빠르게 자라면 검사가 필요해요.')
     }
+    if (feel === '빠르게 커지고 있어요') {
+      lines.push('• 빠른 성장: 비만세포종·육종 등 악성 종양은 빠르게 자라는 경우가 많아요. 즉시 FNA 권장.')
+    }
+
     if (surface === '궤양이나 상처가 있어요' || surface === '분비물이 나와요') {
-      lines.push('• 표면 궤양 또는 분비물: 감염이나 악성 변환 가능성 — 즉시 확인이 필요해요.')
+      lines.push('• 표면 궤양/분비물: 감염 또는 악성 변환 가능성 — 즉시 진료가 필요해요.')
     }
     if (size === '골프공 이상') {
-      lines.push('• 큰 크기의 혹: 크기 자체가 진단 우선순위를 높여요.')
+      lines.push('• 크기가 큰 혹: 크기 자체가 수술적 제거 및 조직검사 우선순위를 높여요.')
     }
+
+    if (when === '오래됐는데 최근 변했어요') {
+      lines.push('• 기존 혹의 성상 변화: 악성 전환 가능성 — 즉시 세포 검사가 필요해요.')
+    }
+
+    lines.push('• babungee 원칙: 혹이 발견되면 크기나 느낌에 관계없이 세침흡인세포검사(FNA)를 먼저 받는 것을 강력히 권장해요.')
   }
 
   if (systems.includes('endocrine')) {
     const symptom = ans['endo_symptom']
     const weightPeriod = ans['endo_weight_period']
+    const appetite = ans['endo_appetite']
+    const urine = ans['endo_urine']
+    const other = ans['endo_other']
 
     if (symptom === '물을 엄청 많이 마셔요') {
-      lines.push('• 다음다뇨: 당뇨, 쿠싱 증후군, 신부전의 주요 증상이에요. 혈액 + 소변 검사가 필요해요.')
+      lines.push('• 다음다뇨(물 많이 마심): 3가지 주요 감별 진단이 필요해요:')
+      lines.push('  1) 당뇨 → 혈당 검사, 소변 당 확인')
+      lines.push('  2) 쿠싱 증후군(부신피질기능항진증) → ALKP 상승, 복부 팽창, LDDST(저용량 덱사메타손 억제 검사)')
+      lines.push('  3) 신부전 → CRE, SDMA, BUN 수치 확인')
     }
     if (symptom === '배만 볼록하게 나왔어요') {
-      lines.push('• 복부 팽창: 부신 피질 기능 항진증(쿠싱) 또는 복강 내 종괴 가능성이에요.')
+      lines.push('• 복부 팽창(배가 볼록): 쿠싱 증후군의 전형적 소견이에요. 근육 약화 + 털 빠짐이 함께 있으면 쿠싱 의심도 더 높아요.')
+    }
+    if (symptom === '털이 많이 빠지고 피부가 변했어요') {
+      lines.push('• 탈모 + 피부 변화: 갑상선기능저하증(저하 시 털 빠짐) 또는 쿠싱(피부 얇아짐, 탈모) 감별 필요.')
+    }
+    if (appetite === '식욕이 크게 늘었어요') {
+      lines.push('• 식욕 증가: 쿠싱이나 당뇨에서 흔히 나타나는 증상이에요.')
     }
     if (weightPeriod === '1~2주 안에 눈에 띄게') {
-      lines.push('• 빠른 체중 감소: 심각한 내과 질환의 신호일 수 있어요.')
+      lines.push('• 급격한 체중 감소: 심각한 내과 질환(당뇨, 종양, 신부전 등)의 신호 — 오늘~내일 진료 필요.')
+    }
+    if (other === '복부가 팽창했어요') {
+      lines.push('• 복부 팽창: 쿠싱 또는 복강 내 액체 축적 가능성 — 초음파 검사 권장.')
     }
   }
 
@@ -879,8 +967,58 @@ function buildRecommendation(
   }
 
   // 정형외과 특이 지침
-  if (systems.includes('orthopedic') && ans['ortho_weight'] === '전혀 못 써요') {
-    lines.push('▶ 다리를 전혀 못 쓰는 경우 이동 시 안아서 이동하고 스스로 걷게 하지 마세요.')
+  if (systems.includes('orthopedic')) {
+    const weight = ans['ortho_weight']
+    const onset = ans['ortho_onset']
+    if (weight === '전혀 못 써요') {
+      lines.push('▶ 다리를 전혀 못 쓰는 경우: 안아서 이동하고 스스로 걷게 하지 마세요.')
+      lines.push('▶ 방사선 촬영으로 골절·척추 문제 확인이 우선이에요.')
+    }
+    if (onset === '갑자기 못 쓰게 됐어요') {
+      lines.push('▶ 갑작스러운 마비: 척추 디스크 탈출 가능성 — 오늘 중 진료를 받으세요. 빠를수록 회복 예후가 좋아요.')
+    }
+    lines.push('▶ 안정 시 계단·점프·소파 오르내리기를 제한하세요.')
+  }
+
+  // 호흡기 특이 지침
+  if (systems.includes('respiratory')) {
+    const sleepRate = ans['resp_sleep_rate']
+    const heartHx = ans['resp_heart_hx']
+    if (sleepRate === '30~40회 정도예요' || sleepRate === '40회 이상이에요') {
+      lines.push('▶ 매일 잠든 후 1분간 호흡수를 세서 기록해두세요 (정상: 분당 30회 이하).')
+      lines.push('▶ 호흡수가 연속 2일 이상 40회를 넘으면 당일 병원에 가세요.')
+    }
+    if (heartHx === '네, 심장약 복용 중이에요') {
+      lines.push('▶ 현재 복용 중인 심장약(피모벤단, 이뇨제 등) 목록을 병원에 가져가세요.')
+      lines.push('▶ 임의로 심장약을 중단하지 마세요.')
+    }
+  }
+
+  // 비뇨기 특이 지침
+  if (systems.includes('urinary')) {
+    const kidneyHx = ans['uri_kidney_hx']
+    const output = ans['uri_output']
+    if (kidneyHx === '신부전 진단받고 관리 중이에요') {
+      lines.push('▶ 신부전 환자: 최신 혈액검사 결과지(CRE, SDMA, BUN, 인 수치)와 처방전을 지참하세요.')
+      lines.push('▶ 수분 섭취량과 소변량을 일간 기록해두면 진료 시 도움이 돼요.')
+    }
+    if (output === '소변을 아예 못 봐요') {
+      lines.push('▶ 12시간 이상 소변을 전혀 못 보면 즉시 응급 병원으로 가세요.')
+    }
+  }
+
+  // 종양 특이 지침
+  if (systems.includes('lump')) {
+    lines.push('▶ 혹의 크기 변화를 사진으로 날짜별로 기록해두세요.')
+    lines.push('▶ 발견 즉시 세침흡인세포검사(FNA)를 받는 것을 권장해요 — 조직을 최소로 건드리는 간단한 검사예요.')
+  }
+
+  // 내분비 특이 지침
+  if (systems.includes('endocrine')) {
+    lines.push('▶ 하루 음수량(물 마신 양)과 소변량을 ml 단위로 3일간 기록해오세요. 진료 시 매우 중요한 자료예요.')
+    if (ans['endo_symptom'] === '물을 엄청 많이 마셔요') {
+      lines.push('▶ 혈액검사(혈당, 코르티솔/ALKP, CRE, SDMA) + 소변 검사(비중, 당뇨 확인)를 함께 받으세요.')
+    }
   }
 
   return lines
@@ -913,28 +1051,52 @@ function buildVetInfo(
   }
 
   if (systems.includes('respiratory')) {
-    info.push('기침 영상(가능하다면 동영상 촬영)')
-    tests.push('흉부 방사선 촬영', '필요 시 심장초음파')
+    info.push('기침 동영상 촬영 (기침 소리·빈도 확인에 중요)')
+    info.push('수면 중 호흡수 측정값 (1분간 횟수)')
+    if (ans['resp_heart_hx'] === '네, 심장약 복용 중이에요') {
+      info.push('현재 복용 중인 심장약 전체 목록 + 용량')
+    }
+    tests.push('흉부 방사선 촬영 (폐·심장 크기 확인)')
+    tests.push('심장 질환 의심 시: 심장초음파(심에코)')
+    tests.push('감염 의심 시: 혈액검사 (백혈구, CRP 염증 수치)')
   }
 
   if (systems.includes('urinary')) {
-    info.push('소변 샘플 (아침 첫 소변을 깨끗한 용기에)')
-    tests.push('소변 검사 (비중, 혈뇨, 결정)', '필요 시 방광 초음파')
+    info.push('아침 첫 소변 샘플 (깨끗한 용기에 담아 2시간 내 검사)')
+    info.push('24시간 음수량·소변량 기록')
+    if (ans['uri_kidney_hx'] === '신부전 진단받고 관리 중이에요') {
+      info.push('최근 혈액검사 결과지 (CRE, SDMA, BUN, 인(P), 혈압 수치)')
+    }
+    tests.push('소변 검사 (비중, 혈뇨, 단백뇨, 결정 침사)')
+    tests.push('혈액검사 (CRE, SDMA, BUN, 전해질)')
+    tests.push('방광 초음파 (결석·종괴 확인)')
   }
 
   if (systems.includes('orthopedic')) {
-    info.push('절기 시작 시각, 외상 여부')
-    tests.push('방사선 촬영 (골절·관절 이상 확인)')
+    info.push('절기 시작 시각, 외상·낙하 여부')
+    info.push('어느 다리·어느 상황에서 심해지는지 메모')
+    tests.push('방사선 촬영 (골절·관절·척추 이상 확인)')
+    if (ans['ortho_onset'] === '갑자기 못 쓰게 됐어요') {
+      tests.push('척추 디스크 의심 시: MRI 또는 CT 촬영')
+    }
   }
 
   if (systems.includes('lump')) {
-    info.push('혹 발견 시기, 크기 변화 사진')
-    tests.push('세침흡인세포검사(FNA) 또는 조직 생검')
+    info.push('혹 발견 날짜, 처음 발견 시 크기')
+    info.push('날짜별 크기 변화 사진')
+    tests.push('세침흡인세포검사(FNA) — 가장 먼저, 간단하고 통증 적음')
+    tests.push('악성 의심 시: 조직 생검(절제 생검 or 코어 생검)')
+    tests.push('악성 확진 시: CT 또는 흉부 방사선 (전이 확인)')
   }
 
   if (systems.includes('endocrine')) {
-    info.push('음수량·소변량 일간 기록, 체중 변화 추이')
-    tests.push('혈액검사 (혈당, 코르티솔, 갑상선, 신장 기능)', '소변 검사')
+    info.push('3일간 하루 음수량(ml) + 소변량(ml) 기록')
+    info.push('체중 변화 추이 (최근 1~3개월)')
+    tests.push('혈액검사: 혈당, ALKP(쿠싱 지표), 코르티솔, CRE, 갑상선(T4)')
+    tests.push('소변 검사: 비중, 소변 당, 단백뇨')
+    if (ans['endo_symptom'] === '배만 볼록하게 나왔어요') {
+      tests.push('쿠싱 확진: LDDST(저용량 덱사메타손 억제 검사) + 복부 초음파')
+    }
   }
 
   if (info.length) lines.push('• 알릴 정보: ' + info.join(' / '))
@@ -946,16 +1108,50 @@ function buildVetInfo(
 function buildRedFlags(systems: QuestionSystem[]): string[] {
   const common = [
     '• 잇몸이 파랗거나 보라색으로 변할 때',
-    '• 경련·발작이 시작될 때',
+    '• 경련·발작이 멈추지 않거나 5분 이상 지속될 때',
     '• 완전히 쓰러져 일어나지 못할 때',
+    '• 극심한 통증으로 비명을 지를 때',
   ]
   const specific: Partial<Record<QuestionSystem, string[]>> = {
-    digestive: ['• 구토나 설사에 선홍색 피가 다량 섞일 때', '• 배가 딱딱하게 부풀어 오를 때'],
-    respiratory: ['• 입술·혀가 파랗게 변할 때', '• 앉은 채로 팔꿈치를 벌리고 숨 쉴 때'],
-    urinary: ['• 12시간 이상 소변을 전혀 못 볼 때', '• 배를 만지면 비명을 지를 때'],
-    orthopedic: ['• 갑자기 뒷다리를 전혀 못 쓰게 될 때', '• 척추 통증으로 움직임을 거부할 때'],
-    lump: ['• 혹에서 피나 고름이 흘러나올 때', '• 하루 사이에 혹이 눈에 띄게 커질 때'],
-    neurological: ['• 발작이 5분 이상 지속될 때', '• 발작 후 30분 이상 의식이 돌아오지 않을 때'],
+    digestive: [
+      '• 구토나 설사에 선홍색 피가 다량 섞이거나 검은 변이 나올 때',
+      '• 배가 딱딱하게 부풀어 오를 때 (위확장·염전 의심)',
+      '• 발열(39.5℃ 이상) + 구토/설사가 동반될 때',
+    ],
+    respiratory: [
+      '• 잠자는 중 호흡수가 분당 40회 이상 지속될 때',
+      '• 입으로 숨 쉬거나 팔꿈치를 벌리고 앉아 숨 쉴 때',
+      '• 흰 거품을 토하며 호흡 곤란이 같이 올 때 (폐수종 의심)',
+    ],
+    urinary: [
+      '• 12시간 이상 소변을 전혀 못 볼 때 (고양이 특히 위험)',
+      '• 배를 만지면 극심하게 아파할 때',
+      '• 갈색이나 검붉은 소변이 나올 때',
+    ],
+    orthopedic: [
+      '• 갑자기 뒷다리를 전혀 못 쓰게 될 때 (척추 디스크 의심)',
+      '• 척추 통증으로 목이나 허리를 움직이지 못할 때',
+      '• 사고 후 다리를 전혀 못 쓸 때',
+    ],
+    lump: [
+      '• 혹에서 피나 고름이 흘러나올 때',
+      '• 하루 사이에 혹이 눈에 띄게 커질 때',
+      '• 기존 혹 주변 피부가 갑자기 검게 변하거나 무너질 때',
+    ],
+    neurological: [
+      '• 발작이 5분 이상 지속되거나 반복될 때 (군발 발작)',
+      '• 발작 후 30분 이상 의식이 돌아오지 않을 때',
+      '• 갑자기 한쪽 방향으로만 계속 돌 때 (전정 문제)',
+    ],
+    endocrine: [
+      '• 갑자기 식욕이 완전히 없어지고 기운이 없을 때',
+      '• 혈당이 매우 높거나 낮을 때 (당뇨 관리 중)',
+      '• 쿠싱 약 복용 중 구토·식욕부진이 생길 때 (부신 위기 가능성)',
+    ],
+    skin: [
+      '• 갑자기 전신에 두드러기가 퍼질 때 (알레르기 쇼크 의심)',
+      '• 피부가 터지거나 깊이 감염돼 고름이 흐를 때',
+    ],
   }
 
   const extra: string[] = []
