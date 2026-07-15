@@ -340,10 +340,25 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       emergencyTriggers: ['노랗거나 초록색이에요'],
     },
     {
+      id: 'eye_vision',
+      system: 'eye',
+      text: '시력에 변화가 있나요?',
+      options: ['물체에 자꾸 부딪혀요', '어두운 곳에서 못 봐요', '시력은 정상 같아요', '모르겠어요'],
+      emergencyTriggers: ['물체에 자꾸 부딪혀요'],
+    },
+    {
+      id: 'eye_pain',
+      system: 'eye',
+      text: '눈 주변을 만지면 아파하나요?',
+      options: ['많이 아파해요 (피해요)', '약간 싫어해요', '괜찮아해요', '확인 못 했어요'],
+      emergencyTriggers: ['많이 아파해요 (피해요)'],
+    },
+    {
       id: 'eye_onset',
       system: 'eye',
       text: '언제부터 증상이 생겼나요?',
       options: ['오늘 갑자기', '2~3일 됐어요', '1주일 이상', '오래됐는데 점점 심해져요'],
+      emergencyTriggers: ['오늘 갑자기'],
     },
   ],
   ear: [
@@ -366,6 +381,19 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       text: '귀 쪽을 만지면 아파하나요?',
       options: ['많이 아파해요 (피해요)', '약간 싫어해요', '괜찮아해요', '확인 못 했어요'],
       emergencyTriggers: ['많이 아파해요 (피해요)'],
+    },
+    {
+      id: 'ear_recurrence',
+      system: 'ear',
+      text: '귀 문제가 자주 반복되나요?',
+      options: ['처음이에요', '1~2달에 한 번 재발해요', '자주 재발해요 (월 1회 이상)', '항상 달고 살아요'],
+      emergencyTriggers: ['자주 재발해요 (월 1회 이상)', '항상 달고 살아요'],
+    },
+    {
+      id: 'ear_allergy',
+      system: 'ear',
+      text: '알레르기나 피부 문제가 함께 있나요?',
+      options: ['알레르기가 있어요', '피부 가려움이 자주 있어요', '없어요', '모르겠어요'],
     },
     {
       id: 'ear_duration',
@@ -753,6 +781,17 @@ function buildClinicalNote(
       lines.push('• 혈변(선홍색): 하부 소화관(대장, 직장) 출혈 가능성이에요.')
     } else if (stoolColor === '노랗거나 회색이에요') {
       lines.push('• 회색/노란 변: 담즙 분비 이상 또는 췌장·간 문제를 고려할 수 있어요.')
+      lines.push('  → 췌장염 의심 시: CPL(췌장 특이 리파아제) + 복부 초음파 검사가 필요해요.')
+    }
+
+    // 췌장염 패턴 분석
+    const abdomen = ans['dige_abdomen']
+    if (abdomen === '많이 아파해요') {
+      lines.push('• 복통 동반: 췌장염의 가장 중요한 임상 신호가 통증이에요. 등이 굽거나 고개를 숙이는 자세도 췌장염 통증 신호예요.')
+      lines.push('  → 췌장염 치료의 핵심: 통증 관리 + 수액 요법. 금식보다 소량씩 빨리 재급여가 현재 권장 방향이에요.')
+    }
+    if (freq === '하루 3~5회' && stoolColor === '노랗거나 회색이에요') {
+      lines.push('• 반복 구토 + 회색/노란 변: 급성 췌장염 패턴이에요. CPL 검사를 우선 받으세요.')
     }
 
     if (stool === '물처럼 흘러요') {
@@ -1024,6 +1063,67 @@ function buildClinicalNote(
     }
   }
 
+  if (systems.includes('eye')) {
+    const look = ans['eye_look']
+    const behave = ans['eye_behave']
+    const discharge = ans['eye_discharge']
+    const vision = ans['eye_vision']
+    const pain = ans['eye_pain']
+    const onset = ans['eye_onset']
+
+    if (look === '눈이 부어있거나 돌출됐어요') {
+      lines.push('• 안구 돌출/부종: 안압 상승(녹내장) 또는 안와 뒤 종괴 가능성 — 즉시 응급 진료가 필요해요.')
+    }
+    if (look === '눈이 뿌옇게 변했어요') {
+      lines.push('• 각막 혼탁 또는 백내장: 고양이에서 백내장의 가장 흔한 원인은 포도막염(눈 내부 염증)이에요. 방치 시 녹내장으로 진행될 수 있어요.')
+    }
+    if (discharge === '노랗거나 초록색이에요') {
+      lines.push('• 농성 분비물: 세균성 결막염 또는 각막 궤양 가능성 — 항생제 안약이 필요해요. 각막 형광 검사(플루오레신)로 궤양 유무 확인이 필요해요.')
+    }
+    if (behave === '계속 감고 있어요') {
+      lines.push('• 눈 찡그리기(안검경련): 각막 자극, 각막 궤양, 또는 안압 상승의 통증 신호예요. 오늘 중 진료를 받으세요.')
+    }
+    if (pain === '많이 아파해요 (피해요)') {
+      lines.push('• 눈 주변 통증: 안압 상승(녹내장) 또는 포도막염 가능성이 있어요. 안압 측정이 필수예요.')
+      lines.push('  → 녹내장은 개방각/폐쇄각에 따라 통증 정도가 다르지만 안압이 높으면 즉시 안압 강하 처치가 필요해요.')
+    }
+    if (vision === '물체에 자꾸 부딪혀요') {
+      lines.push('• 시력 저하: 갑작스러운 실명은 고혈압성 망막 박리(고혈압·신부전 합병증) 또는 진행된 녹내장일 수 있어요. 즉시 안압·혈압 측정이 필요해요.')
+    }
+    if (onset === '오늘 갑자기') {
+      lines.push('• 급성 안과 증상: 각막 궤양, 급성 녹내장, 또는 전방출혈(외상) 가능성 — 오늘 중 진료가 필요해요.')
+    }
+    lines.push('• 안압 측정은 안과 진료의 기본이에요. 모든 눈 증상에서 안압 체크를 요청하세요.')
+  }
+
+  if (systems.includes('ear')) {
+    const symptom = ans['ear_symptom']
+    const inside = ans['ear_inside']
+    const pain = ans['ear_pain']
+    const recurrence = ans['ear_recurrence']
+    const allergy = ans['ear_allergy']
+
+    if (inside === '노랗거나 고름 같은 분비물') {
+      lines.push('• 농성 이루(고름): 세균성 외이염 또는 중이염 가능성 — 귀 세척 + 항균 귀약이 필요해요. 세균 배양·감수성 검사를 권장해요.')
+    }
+    if (inside === '까맣거나 갈색 분비물') {
+      lines.push('• 갈색/검은 분비물: 말라세치아(효모균) 외이염의 전형적 소견이에요. 항진균 귀약 처방이 필요해요.')
+    }
+    if (recurrence === '자주 재발해요 (월 1회 이상)' || recurrence === '항상 달고 살아요') {
+      lines.push('• 반복성 외이염: 단순 감염이 아닌 알레르기 또는 면역 이상이 기저 원인일 가능성이 높아요.')
+      lines.push('  → 반복 재발 시 외이염 자체보다 근본 원인(알레르기) 치료가 더 중요해요. 피부과 전문 진료를 고려하세요.')
+    }
+    if (allergy === '알레르기가 있어요' || allergy === '피부 가려움이 자주 있어요') {
+      lines.push('• 알레르기 + 외이염: 알레르기 피부염의 일환으로 귀가 반복적으로 감염되는 패턴이에요. 귀 치료와 함께 알레르기 관리가 필요해요.')
+    }
+    if (pain === '많이 아파해요 (피해요)') {
+      lines.push('• 귀 통증 심함: 외이도 심한 염증 또는 중이염으로의 진행 가능성 — 귀 안쪽 검사(이경 or 내시경)가 필요해요.')
+    }
+    if (symptom === '머리를 자꾸 흔들어요') {
+      lines.push('• 지속적인 두부 진탕: 귀 깊숙이 불편함이 있다는 신호예요. 이물질 또는 중이염 가능성을 배제해야 해요.')
+    }
+  }
+
   return lines
 }
 
@@ -1149,6 +1249,33 @@ function buildRecommendation(
     }
   }
 
+  // 안과 특이 지침
+  if (systems.includes('eye')) {
+    const look = ans['eye_look']
+    const pain = ans['eye_pain']
+    const behave = ans['eye_behave']
+    if (look === '눈이 부어있거나 돌출됐어요' || pain === '많이 아파해요 (피해요)' || behave === '계속 감고 있어요') {
+      lines.push('▶ 안구 돌출·통증·눈 찡그리기는 응급 소견이에요. 오늘 중 진료를 받으세요.')
+    }
+    lines.push('▶ 눈 주변을 면봉이나 생리식염수에 적신 거즈로 부드럽게 닦아주세요 (문지르지 않기).')
+    lines.push('▶ 사람용 안약(항생제 포함)은 동물에게 함부로 사용하지 마세요.')
+    if (look === '눈이 뿌옇게 변했어요') {
+      lines.push('▶ 혼탁 진행 여부를 사진으로 날짜별로 기록해두세요.')
+    }
+    lines.push('▶ 반드시 안압 측정을 요청하세요 — 녹내장은 통증이 없어도 진행될 수 있어요.')
+  }
+
+  // 귀 특이 지침
+  if (systems.includes('ear')) {
+    const recurrence = ans['ear_recurrence']
+    lines.push('▶ 귀 안에 물이 들어가지 않도록 목욕·수영을 피하세요.')
+    lines.push('▶ 귀 세척은 수의사 지시 없이 임의로 하지 마세요 — 잘못된 세척은 상태를 악화시킬 수 있어요.')
+    if (recurrence === '자주 재발해요 (월 1회 이상)' || recurrence === '항상 달고 살아요') {
+      lines.push('▶ 반복 재발이면 항균 귀약만 반복하지 말고 알레르기 등 기저 원인 검사를 받으세요.')
+    }
+    lines.push('▶ 귀를 과도하게 긁어 상처가 생기면 넥카라를 씌워주세요.')
+  }
+
   // 종양 특이 지침
   if (systems.includes('lump')) {
     lines.push('▶ 혹의 크기 변화를 사진으로 날짜별로 기록해두세요.')
@@ -1183,12 +1310,16 @@ function buildVetInfo(
     info.push('마지막으로 먹은 것과 시간')
     if (ans['dige_cause'] === '뭔가를 삼켰을 수 있어요') info.push('삼켰을 가능성이 있는 물건 종류')
     tests.push('복부 신체검사')
-    tests.push('혈액검사 (염증 수치 CRP, 췌장 수치 CPL, 신장·간 기능)')
+    tests.push('혈액검사 (염증 수치 CRP, 췌장 수치 CPL·리파아제, 신장·간 기능, 백혈구)')
+    tests.push('복부 초음파 (췌장 크기·밀도 확인 — 하얗게 보이면 췌장염 시사)')
     if (ans['dige_stool'] === '물처럼 흘러요' || ans['dige_freq'] === '하루 3~5회' || ans['dige_freq'] === '하루 6회 이상') {
-      tests.push('복부 방사선 또는 초음파 (이물·장폐색 확인)')
+      tests.push('복부 방사선 (이물·장폐색 확인)')
     }
     if (ans['dige_blood'] === '구토에 피가 보여요' || ans['dige_blood'] === '대변에 피가 섞여요' || ans['dige_stool_color'] === '검은색이에요 (타르 같아요)') {
       tests.push('위장관 출혈 평가 (내시경 또는 초음파 우선)')
+    }
+    if (ans['dige_stool_color'] === '노랗거나 회색이에요' || ans['dige_abdomen'] === '많이 아파해요') {
+      tests.push('⚠️ 췌장염 확인: CPL 수치 + 복부 초음파가 핵심 검사예요. 치료 핵심은 통증 관리 + 수액이에요.')
     }
   }
 
@@ -1276,6 +1407,46 @@ function buildVetInfo(
     tests.push('식이 알레르기 의심 시: 가수분해 단백질 사료로 8~12주 식이 시험')
   }
 
+  if (systems.includes('eye')) {
+    info.push('증상 시작 시각, 눈 분비물 색깔·양 (사진 찍어두세요)')
+    info.push('안약이나 약을 사용 중이라면 약 이름')
+    if (ans['eye_look'] === '눈이 뿌옇게 변했어요') {
+      info.push('처음 뿌옇게 보이기 시작한 시점 (언제부터 변했는지)')
+    }
+    if (ans['eye_vision'] === '물체에 자꾸 부딪혀요') {
+      info.push('시력 저하 시작 시점 — 혈압·신장 수치 최근 검사 결과도 지참')
+    }
+    tests.push('안압 측정 (모든 눈 증상에서 기본 검사)')
+    tests.push('각막 플루오레신 염색 검사 (각막 궤양·찰과상 확인)')
+    tests.push('세극등 검사 (포도막염·백내장·녹내장 감별)')
+    if (ans['eye_discharge'] === '노랗거나 초록색이에요') {
+      tests.push('결막 도말 검사 (세균 확인)')
+    }
+    if (ans['eye_look'] === '눈이 부어있거나 돌출됐어요') {
+      tests.push('안와 초음파 또는 CT (안와 종괴 배제)')
+    }
+  }
+
+  if (systems.includes('ear')) {
+    info.push('귀 증상 시작 시점, 분비물 색깔·냄새')
+    info.push('이전에 외이염 치료 경험과 사용한 귀약 이름')
+    if (ans['ear_recurrence'] === '자주 재발해요 (월 1회 이상)' || ans['ear_recurrence'] === '항상 달고 살아요') {
+      info.push('재발 패턴 (계절성 여부, 알레르기 병력)')
+    }
+    if (ans['ear_allergy'] === '알레르기가 있어요') {
+      info.push('현재 알레르기 치료 여부 + 알레르겐 종류')
+    }
+    tests.push('이경(이내시경) 검사 (외이도·고막 상태 확인)')
+    tests.push('귀 도말 세포 검사 (세균/효모균 감별 — 세균이면 항균제, 효모면 항진균제)')
+    if (ans['ear_recurrence'] === '자주 재발해요 (월 1회 이상)' || ans['ear_recurrence'] === '항상 달고 살아요') {
+      tests.push('세균 배양·감수성 검사 (반복 재발 시 내성균 확인)')
+      tests.push('알레르기 검사 고려 (반복 외이염의 기저 원인 파악)')
+    }
+    if (ans['ear_pain'] === '많이 아파해요 (피해요)') {
+      tests.push('방사선 촬영 또는 CT (중이염·내이염 진행 확인)')
+    }
+  }
+
   if (info.length) lines.push('• 알릴 정보: ' + info.join(' / '))
   if (tests.length) lines.push('• 예상 검사: ' + tests.join(' / '))
 
@@ -1294,6 +1465,7 @@ function buildRedFlags(systems: QuestionSystem[]): string[] {
       '• 구토나 설사에 선홍색 피가 다량 섞이거나 검은 변이 나올 때',
       '• 배가 딱딱하게 부풀어 오를 때 (위확장·염전 의심)',
       '• 발열(39.5℃ 이상) + 구토/설사가 동반될 때',
+      '• 등을 굽히고 배를 만지면 극심하게 아파할 때 (췌장염 심화 신호)',
     ],
     respiratory: [
       '• 잠자는 중 호흡수가 분당 40회 이상 지속될 때',
@@ -1328,6 +1500,17 @@ function buildRedFlags(systems: QuestionSystem[]): string[] {
     skin: [
       '• 갑자기 전신에 두드러기가 퍼질 때 (알레르기 쇼크 의심)',
       '• 피부가 터지거나 깊이 감염돼 고름이 흐를 때',
+    ],
+    eye: [
+      '• 눈이 갑자기 돌출되거나 크기가 달라 보일 때 (안구 탈출 의심)',
+      '• 눈을 전혀 못 뜰 정도로 통증을 심하게 표현할 때',
+      '• 갑자기 아무것도 보지 못하고 물체에 계속 부딪힐 때 (급성 실명)',
+      '• 눈에서 피나 진한 고름이 흘러나올 때',
+    ],
+    ear: [
+      '• 귀 통증이 심해 고개를 움직이지 못할 때',
+      '• 갑자기 한쪽으로 쓰러지거나 빙빙 돌 때 (내이염·전정 증상)',
+      '• 귀 주변 피부가 붉고 부어오르며 열감이 느껴질 때',
     ],
   }
 
