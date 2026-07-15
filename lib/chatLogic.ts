@@ -813,6 +813,11 @@ function buildClinicalNote(
       lines.push('• 무기력 동반: 단순 위장 장애를 넘어 전신 영향이 시작된 신호일 수 있어요.')
     }
 
+    // 만성 구토 패턴 — babungee: 체중 감소 + 만성 구토 = 기저 질환 신호
+    if (onset === '1주일 이상이에요' && (vitality === '많이 축 처지고 무기력해요' || eat === '거의 안 먹어요')) {
+      lines.push('• 만성 구토 + 무기력/식욕부진: babungee 원칙 — "만성 구토는 기저 질환(신부전, 심부전, 종양)의 신호일 수 있어요. 단순 위장약으로 덮기 전에 기저 원인 검사가 우선이에요."')
+    }
+
     if (cause === '뭔가를 삼켰을 수 있어요') {
       lines.push('• 이물 섭취 가능성: 방사선 촬영으로 이물 위치 및 장 폐색 여부 확인이 필요해요.')
     }
@@ -854,6 +859,14 @@ function buildClinicalNote(
     }
     if (coughType === '가래가 끓는 듯한 기침이에요') {
       lines.push('• 습성 기침: 하부 기도 감염, 폐렴, 또는 폐에 액체 축적 가능성이에요.')
+    }
+    if (heartHx === '심장병은 있는데 약은 없어요') {
+      lines.push('• 심장병 + 약 없음: 심장 단계 평가 후 약물 시작이 필요한 상태일 수 있어요. ACVIM 가이드라인상 B2 이상이면 피모벤단 처방이 권장돼요.')
+    }
+    // 심장 D단계 경고
+    const nasal = ans['resp_nasal']
+    if (effort === '배까지 움직이며 숨 쉬어요' && heartHx === '네, 심장약 복용 중이에요') {
+      lines.push('• 심장약 복용 중 심한 호흡 곤란: 약물로 교정이 안 되는 D단계 진행 가능성이 있어요. 용량 조정 또는 추가 처치가 필요해요.')
     }
   }
 
@@ -1136,6 +1149,22 @@ function buildClinicalNote(
     }
     if (symptom === '머리를 자꾸 흔들어요') {
       lines.push('• 지속적인 두부 진탕: 귀 깊숙이 불편함이 있다는 신호예요. 이물질 또는 중이염 가능성을 배제해야 해요.')
+    }
+  }
+
+  // 심장 + 신장 동반 감지 — babungee의 심장-신장 악순환 원칙
+  if (systems.includes('respiratory') && systems.includes('urinary')) {
+    lines.push('⚠️ 심장+신장 복합 주의: 심장약(이뇨제·혈관확장제)은 심장에 도움이 되지만 신장 혈류를 줄여 신장에 부담을 줄 수 있어요.')
+    lines.push('  → babungee 원칙: "심장을 위한 약이 신장에 해롭다고 약을 끊으면 안 돼요. 두 장기의 균형을 전문의와 함께 조율해야 해요."')
+    lines.push('  → 심장약 복용 중 CRE·SDMA 수치가 올라가도 심장 안정이 우선인 경우가 많아요.')
+  }
+
+  // general 시스템 — 활기 저하·무기력 단독 케이스
+  if (systems.includes('general') && !systems.some(s => s !== 'general')) {
+    const vitality = ans['gen_vitality']
+    if (vitality === '많이 축 처져요' || vitality === '거의 움직이지 않아요') {
+      lines.push('• 전신 활기 저하: 신체 증상이 뚜렷하지 않아도 내부 질환(신부전, 빈혈, 심부전, 종양)의 초기 신호일 수 있어요.')
+      lines.push('  → 체중이 빠지고 있다면 기저 질환 가능성이 더 높아요 — 혈액검사가 우선이에요.')
     }
   }
 
