@@ -1063,15 +1063,15 @@ export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfil
   const primary = sorted[0]
 
   for (const sys of sorted) {
-    // 주 증상은 전체 질문, 부가 증상은 최대 6개 (기존 3개에서 확대)
-    const limit = sys === primary ? Infinity : 6
+    // 주 증상은 최대 10개, 부가 증상은 최대 4개 (중복 방지)
+    const limit = sys === primary ? 10 : 4
     for (const q of QUESTION_BANKS[sys].slice(0, limit)) {
       if (!seen.has(q.id)) { seen.add(q.id); questions.push(q) }
     }
   }
 
-  // 일반 질문은 항상 뒤에 4개 추가
-  for (const q of QUESTION_BANKS.general.slice(0, 4)) {
+  // 일반 질문은 최대 2개만 추가 (중복 제거 후)
+  for (const q of QUESTION_BANKS.general.slice(0, 2)) {
     if (!seen.has(q.id)) { seen.add(q.id); questions.push(q) }
   }
 
@@ -1095,6 +1095,15 @@ export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfil
       urgencySignals: ['천천히 돌아와요 (2초 이상)', '그대로 있어요'],
     }
     if (!seen.has(q.id)) questions.unshift(q)
+  }
+
+  // 총 질문 수 최대 12개로 제한 (긴급 질문은 항상 유지)
+  const MAX_QUESTIONS = 12
+  if (questions.length > MAX_QUESTIONS) {
+    const emergency = questions.filter(q => q.emergencyTriggers && q.emergencyTriggers.length > 0)
+    const rest = questions.filter(q => !q.emergencyTriggers || q.emergencyTriggers.length === 0)
+    const keepRest = rest.slice(0, MAX_QUESTIONS - emergency.length)
+    return [...emergency, ...keepRest].slice(0, MAX_QUESTIONS)
   }
 
   return questions
