@@ -170,8 +170,7 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       id: 'dige_freq',
       system: 'digestive',
       text: '구토나 설사를 얼마나 자주 하나요?',
-      options: ['하루 1~2회', '하루 3~5회', '하루 6회 이상', '한 번만 했어요'],
-      emergencyTriggers: ['하루 6회 이상'],
+      options: ['한 번만 했어요', '하루 1~2회', '하루 3~5회', '하루 6회 이상'],
     },
     {
       id: 'dige_vomit_type',
@@ -189,8 +188,7 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       id: 'dige_blood',
       system: 'digestive',
       text: '구토물이나 대변에 피가 섞여 있나요?',
-      options: ['구토에 피가 보여요', '대변에 피가 섞여요', '둘 다 없어요', '확인하기 어려워요'],
-      emergencyTriggers: ['구토에 피가 보여요', '대변에 피가 섞여요'],
+      options: ['둘 다 없어요', '구토에 피가 보여요', '대변에 피가 섞여요', '확인하기 어려워요'],
     },
     {
       id: 'dige_eat',
@@ -209,7 +207,6 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'digestive',
       text: '배를 살짝 눌러보면 어떻게 반응하나요?',
       options: ['아파하지 않아요', '약간 긴장하거나 피해요', '많이 아파해요', '배가 빵빵하게 부풀어 있어요'],
-      emergencyTriggers: ['많이 아파해요', '배가 빵빵하게 부풀어 있어요'],
     },
   ],
   general: [
@@ -520,11 +517,23 @@ export function assessUrgency(questions: Question[], answers: Record<string, str
     if (ans && q.emergencyTriggers?.includes(ans)) return 'emergency'
   }
 
+  // 혈변/혈토/복부 통증은 emergency 수준으로 상향
+  const emergencyFromAnswers = [
+    '구토에 피가 보여요', '대변에 피가 섞여요',
+    '많이 아파해요', '배가 빵빵하게 부풀어 있어요',
+    '하루 6회 이상',
+    '거의 움직이지 않아요', '쓰러져 있어요',
+  ]
+  if (Object.values(answers).some(a => emergencyFromAnswers.includes(a))) return 'emergency'
+
   const cautionAnswers = [
     '창백하거나 흰색이에요', '많이 헐떡거려요', '몸을 심하게 떨었어요', '비틀거리거나 쓰러졌어요',
-    '찔끔씩 나와요', '소변에 피가 섞여요', '소변량이 줄었어요', '어제부터예요', '2~3일 됐어요',
-    '하루 3~5회', '거의 안 먹어요', '아예 안 먹어요', '많이 축 처져요',
+    '찔끔씩 자주 시도해요', '소변에 피가 섞여요', '소변량이 많이 줄었어요', '어제부터예요', '2~3일 됐어요',
+    '하루 3~5회', '거의 안 먹어요', '아무것도 안 먹어요', '많이 축 처져요',
     '천천히 돌아와요 (2초 이상)', '기운이 없어 보여요',
+    '물처럼 흘러요', '약간 긴장하거나 피해요',
+    '노랗거나 초록색이에요', '빨갛거나 분홍색이에요', '갈색이나 진한 색이에요',
+    '많이 아파해요 (피해요)', '전혀 못 써요',
     // 피부
     '빨갛게 부어있어요', '털이 빠지거나 벗겨져요', '오래됐는데 점점 심해져요',
     // 눈
