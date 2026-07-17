@@ -1097,6 +1097,92 @@ export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfil
     if (!seen.has(q.id)) questions.unshift(q)
   }
 
+  // 쿠싱 증후군: 호르몬 약 복용 상태와 애디슨 위기 징후 확인
+  if (profile?.conditions?.includes('쿠싱 증후군')) {
+    const crisisQ: Question = {
+      id: 'cushing_crisis',
+      system: 'endocrine',
+      text: '쿠싱 이력이 있어서 여쭤볼게요. 심하게 기력이 없어 축 처지거나 몸을 떠는 증상이 있나요? (애디슨 위기 가능성 확인)',
+      options: ['네, 심하게 처져요', '약간 기운이 없어요', '평소와 비슷해요', '모르겠어요'],
+      emergencyTriggers: ['네, 심하게 처져요'],
+      urgencySignals: ['약간 기운이 없어요'],
+    }
+    const medQ: Question = {
+      id: 'cushing_med',
+      system: 'endocrine',
+      text: '쿠싱 치료를 위해 베토리릴(트리로스탄) 같은 호르몬 약을 복용 중인가요?',
+      options: ['네, 매일 복용 중이에요', '최근에 복용을 시작했어요 (2주 이내)', '최근에 중단했어요', '복용한 적 없어요'],
+      urgencySignals: ['최근에 중단했어요', '최근에 복용을 시작했어요 (2주 이내)'],
+    }
+    if (!seen.has(crisisQ.id)) questions.unshift(crisisQ)
+    if (!seen.has(medQ.id)) questions.unshift(medQ)
+  }
+
+  // 당뇨: 인슐린 투여 상태와 저혈당 징후 확인
+  if (profile?.conditions?.includes('당뇨')) {
+    const hypoQ: Question = {
+      id: 'diabetes_hypo',
+      system: 'endocrine',
+      text: '당뇨 이력이 있어서 여쭤볼게요. 휘청거리거나 몸을 떨거나 의식이 흐려지는 증상이 있나요? (저혈당 의심)',
+      options: ['네, 그런 증상이 있어요', '약간 이상해요', '없어요', '모르겠어요'],
+      emergencyTriggers: ['네, 그런 증상이 있어요'],
+      urgencySignals: ['약간 이상해요'],
+    }
+    const insulinQ: Question = {
+      id: 'diabetes_insulin',
+      system: 'endocrine',
+      text: '인슐린 주사를 맞고 있나요? 오늘 정상적으로 투여했나요?',
+      options: ['네, 정상적으로 맞았어요', '오늘 아직 안 맞았어요', '최근에 용량을 바꿨어요', '인슐린은 안 맞아요'],
+      urgencySignals: ['최근에 용량을 바꿨어요'],
+    }
+    if (!seen.has(hypoQ.id)) questions.unshift(hypoQ)
+    if (!seen.has(insulinQ.id)) questions.unshift(insulinQ)
+  }
+
+  // 갑상선 질환: 종에 따라 저하증(개)/항진증(고양이) 방향이 달라요
+  if (profile?.conditions?.includes('갑상선 질환')) {
+    const q: Question = profile?.species === 'cat'
+      ? {
+          id: 'thyroid_cat',
+          system: 'endocrine',
+          text: '갑상선 이력이 있어서 여쭤볼게요. 물을 많이 마시거나 잘 먹는데도 살이 빠지는 증상이 심해졌나요? (항진증 관련)',
+          options: ['네, 심해졌어요', '조금 그런 것 같아요', '평소와 비슷해요', '모르겠어요'],
+          urgencySignals: ['네, 심해졌어요'],
+        }
+      : {
+          id: 'thyroid_dog',
+          system: 'endocrine',
+          text: '갑상선 저하증 약(레보티록신 등)을 매일 복용 중인가요? 최근 복용을 거른 적 있나요?',
+          options: ['네, 매일 복용 중이에요', '가끔 거를 때가 있어요', '최근에 중단했어요', '복용한 적 없어요'],
+          urgencySignals: ['최근에 중단했어요'],
+        }
+    if (!seen.has(q.id)) questions.unshift(q)
+  }
+
+  // 관절염: 진통제 복용 상태 확인 (다리·관절 증상일 때만)
+  if (profile?.conditions?.includes('관절염') && sorted.includes('orthopedic')) {
+    const q: Question = {
+      id: 'arthritis_med',
+      system: 'orthopedic',
+      text: '관절염 이력이 있어서 여쭤볼게요. 관절염 약(소염진통제 등)을 평소대로 복용 중인가요?',
+      options: ['평소대로 복용 중이에요', '최근 용량이나 종류를 바꿨어요', '최근에 중단했어요', '복용 안 해요'],
+      urgencySignals: ['최근에 중단했어요'],
+    }
+    if (!seen.has(q.id)) questions.unshift(q)
+  }
+
+  // 간 질환: 황달 여부 확인
+  if (profile?.conditions?.includes('간 질환')) {
+    const q: Question = {
+      id: 'liver_jaundice',
+      system: 'digestive',
+      text: '간 질환 이력이 있어서 여쭤볼게요. 잇몸이나 눈 흰자가 노랗게 보이는 황달 증상이 있나요?',
+      options: ['네, 노랗게 보여요', '약간 그런 것 같아요', '아니요', '확인 못 했어요'],
+      urgencySignals: ['네, 노랗게 보여요', '약간 그런 것 같아요'],
+    }
+    if (!seen.has(q.id)) questions.unshift(q)
+  }
+
   // 총 질문 수 최대 12개로 제한 (긴급 질문은 항상 유지)
   const MAX_QUESTIONS = 12
   if (questions.length > MAX_QUESTIONS) {

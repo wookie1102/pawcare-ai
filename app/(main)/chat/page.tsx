@@ -35,8 +35,12 @@ type Message = {
   content: string
   options?: string[]
   isResult?: boolean
+  isWarning?: boolean
   urgency?: UrgencyLevel
 }
+
+const EMERGENCY_DISCLAIMER =
+  '⚠️ 주의: 이 상담은 수의사의 직접 진료를 대체할 수 없어요. 잇몸·혀가 파랗게 변하거나, 발작, 의식 불명 같은 응급 증상이 있다면 지금 바로 가까운 24시 동물병원으로 이동해주세요.'
 
 const URGENCY_COLORS: Record<UrgencyLevel, string> = {
   emergency: 'bg-red-50 border-red-200',
@@ -164,6 +168,7 @@ export default function ChatPage() {
 
     const petName = profile?.name || '반려동물'
     addAiMessage(generateOpener(text, petName))
+    addAiMessage(EMERGENCY_DISCLAIMER, { isWarning: true })
 
     setTimeout(() => {
       setMessages(prev => [...prev, {
@@ -384,7 +389,11 @@ export default function ChatPage() {
                   🐾
                 </div>
                 <div className="max-w-[85%]">
-                  {msg.isResult ? (
+                  {msg.isWarning ? (
+                    <div className="rounded-2xl rounded-tl-sm border border-amber-300 bg-amber-50 p-3.5">
+                      <p className="text-xs text-amber-800 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  ) : msg.isResult ? (
                     <div className={`rounded-2xl rounded-tl-sm border p-4 ${URGENCY_COLORS[msg.urgency || 'watch']}`}>
                       <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{msg.content}</pre>
                     </div>
