@@ -256,10 +256,10 @@ export default function ChatPage() {
         addAiMessage(qaAnswer)
       } else {
         // 검색 결과 없으면 기존 로직 fallback
-        addAiMessage(answerFollowUp(text))
+        addAiMessage(answerFollowUp(text, profile?.name))
       }
     } catch {
-      addAiMessage(answerFollowUp(text))
+      addAiMessage(answerFollowUp(text, profile?.name))
     } finally {
       setFollowUpLoading(false)
     }

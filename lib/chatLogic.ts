@@ -2550,7 +2550,7 @@ export function reorderByChiefComplaint(text: string, questions: Question[]): Qu
 }
 
 // 결과 후 추가 질문 답변 (키워드 기반)
-export function answerFollowUp(text: string): string {
+function answerFollowUpRaw(text: string): string {
   if (/타이레놀|아스피린|이부프로펜|인간\s*약|사람\s*약|진통제/.test(text)) {
     return [
       '⚠️ 절대 사람용 약을 주지 마세요!',
@@ -50447,4 +50447,38 @@ export function answerFollowUp(text: string): string {
     '• "전염될 수 있나요?"',
     '• "훈련은 어떻게 시키나요?"',
   ].join('\n')
+}
+
+// 답변 맨 앞에 반려동물 이름을 넣은 공감 한 줄을 자연스럽게 얹어줘요
+const EMPATHY_LEAD_INS: Array<(name: string) => string> = [
+  (name) => `${name}이(가) 이런 증상을 보이면 많이 걱정되시죠. 관련 내용을 자세히 알려드릴게요.`,
+  (name) => `${name} 때문에 마음이 편치 않으실 것 같아요. 하나씩 짚어드릴게요.`,
+  (name) => `${name}을(를) 지켜보며 얼마나 신경 쓰이셨을지 알 것 같아요. 차근차근 설명드릴게요.`,
+  (name) => `${name}이(가) 걱정되어 찾아보셨을 텐데, 도움이 될 만한 내용을 정리해드릴게요.`,
+  (name) => `${name}의 상태가 궁금하실 텐데, 관련 정보를 꼼꼼히 안내해드릴게요.`,
+  (name) => `이런 상황이면 ${name} 보호자님도 마음이 쓰이실 거예요. 참고하시면 좋을 내용이에요.`,
+]
+
+function hashText(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return h
+}
+
+function personalizeAnswer(raw: string, petName?: string): string {
+  if (!raw) return raw
+  const name = petName?.trim() || '반려동물'
+  const lines = raw.split('\n')
+  if (lines.length === 0) return raw
+
+  const leadIn = EMPATHY_LEAD_INS[hashText(lines[0]) % EMPATHY_LEAD_INS.length](name)
+  const insertAt = lines[1] === '' ? 2 : 1
+  const withLeadIn = [...lines]
+  withLeadIn.splice(insertAt, 0, leadIn, '')
+  return withLeadIn.join('\n')
+}
+
+// 결과 후 추가 질문 답변 — 반려동물 이름을 담은 공감 문장을 앞에 붙여서 안내해요
+export function answerFollowUp(text: string, petName?: string): string {
+  return personalizeAnswer(answerFollowUpRaw(text), petName)
 }
