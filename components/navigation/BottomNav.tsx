@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, ClipboardList, Pill, MapPin, User } from 'lucide-react'
+import { Home, ClipboardList, MessageCircle, Pill, MapPin, User } from 'lucide-react'
 
 const navItems = [
   { href: '/home', icon: Home, label: '홈' },
   { href: '/health', icon: ClipboardList, label: '건강일지' },
+  { href: '/history', icon: MessageCircle, label: '상담기록' },
   { href: '/prescription', icon: Pill, label: '처방전' },
   { href: '/hospitals', icon: MapPin, label: '병원찾기' },
   { href: '/profile', icon: User, label: '내정보' },
@@ -24,7 +25,7 @@ export default function BottomNav() {
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center gap-0.5 py-2 px-2 rounded-xl transition-colors ${
+              className={`flex flex-col items-center gap-0.5 py-2 px-1 rounded-xl transition-colors ${
                 isActive ? 'text-green-600' : 'text-gray-400'
               }`}
             >
