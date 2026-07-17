@@ -1070,9 +1070,18 @@ export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfil
     }
   }
 
-  // 일반 질문은 최대 2개만 추가 (중복 제거 후)
-  for (const q of QUESTION_BANKS.general.slice(0, 2)) {
-    if (!seen.has(q.id)) { seen.add(q.id); questions.push(q) }
+  // 일반 질문은 최대 2개만 추가 (중복 제거 후 — 이미 계통별 질문에서 같은 취지를 물었다면 해당 gen_* 질문은 건너뜀)
+  const GENERAL_DUPLICATE_SUFFIX: Record<string, RegExp> = {
+    gen_duration: /_(onset|duration|when)$/,
+    gen_vitality: /_vitality$/,
+    gen_eat: /_eat$/,
+  }
+  let addedGeneral = 0
+  for (const q of QUESTION_BANKS.general) {
+    if (addedGeneral >= 2) break
+    const dupPattern = GENERAL_DUPLICATE_SUFFIX[q.id]
+    if (dupPattern && questions.some(existing => dupPattern.test(existing.id))) continue
+    if (!seen.has(q.id)) { seen.add(q.id); questions.push(q); addedGeneral++ }
   }
 
   // 구토 + 설사 동시: 탈수 체크 질문을 맨 앞에
@@ -2578,7 +2587,7 @@ const COMPLAINT_OPENERS: Array<{ keywords: string[]; opener: (name: string) => s
     opener: (name) => `${name}이(가) 기침을 한다니 신경 쓰이셨겠어요. 어떤 상태인지 조금 더 파악해볼게요.`,
   },
   {
-    keywords: ['구토', '토했', '토를'],
+    keywords: ['구토', '토했', '토를', '토하', '토해'],
     opener: (name) => `${name}이(가) 토를 했군요. 어떤 상황인지 조금 더 여쭤볼게요.`,
   },
   {
@@ -2594,8 +2603,8 @@ const COMPLAINT_OPENERS: Array<{ keywords: string[]; opener: (name: string) => s
     opener: (name) => `${name}의 소변 문제라면 빠르게 확인해보는 게 좋아요. 몇 가지 여쭤볼게요.`,
   },
   {
-    keywords: ['기력', '축 처', '무기력', '힘이 없', '활기'],
-    opener: (name) => `${name}이(가) 기력이 없다니 걱정되시겠어요. 어떤 상태인지 더 파악해볼게요.`,
+    keywords: ['기력', '기운', '축 처', '무기력', '힘이 없', '활기'],
+    opener: (name) => `${name}이(가) 기운이 없다니 걱정되시겠어요. 어떤 상태인지 더 파악해볼게요.`,
   },
   {
     keywords: ['귀를 긁', '귀 긁', '귀에서', '귀 냄새', '머리를 흔'],
@@ -2631,7 +2640,7 @@ export function generateOpener(text: string, petName: string): string {
   const name = petName || '반려동물'
 
   // 복합 증상 조합을 개별 키워드보다 먼저 체크
-  const hasVomit = ['구토', '토했', '토를', '토해'].some(kw => text.includes(kw))
+  const hasVomit = ['구토', '토했', '토를', '토하', '토해'].some(kw => text.includes(kw))
   const hasDiarrhea = text.includes('설사')
   if (hasVomit && hasDiarrhea) {
     return `${name}이(가) 구토와 설사를 동시에 하고 있군요. 두 증상이 함께 있으면 탈수가 빠르게 올 수 있어서 꼼꼼히 확인해볼게요.`
@@ -2640,7 +2649,7 @@ export function generateOpener(text: string, petName: string): string {
   for (const { keywords, opener } of COMPLAINT_OPENERS) {
     if (keywords.some(kw => text.includes(kw))) return opener(name)
   }
-  return `${name}의 증상을 조금 더 파악해볼게요. 몇 가지 여쭤볼게요.`
+  return `${name}이(가) 그런 증상을 보이면 많이 걱정되셨겠어요. 상태를 자세히 파악할 수 있게 몇 가지 여쭤볼게요.`
 }
 
 const CHIEF_COMPLAINT_FIRST: Array<{ keywords: string[]; priorityId: string }> = [
