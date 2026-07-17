@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const MAINTENANCE_MODE = true
+const MAINTENANCE_MODE = false
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
