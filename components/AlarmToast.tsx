@@ -4,7 +4,7 @@ import { useAlarmContext } from './AlarmProvider'
 import { X, Bell } from 'lucide-react'
 
 export default function AlarmToast() {
-  const { firedAlarm, dismiss } = useAlarmContext()
+  const { firedAlarm, queuedCount, dismiss } = useAlarmContext()
 
   if (!firedAlarm) return null
 
@@ -15,7 +15,14 @@ export default function AlarmToast() {
           <Bell size={18} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm">💊 복약 시간이에요!</p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-bold text-sm">💊 복약 시간이에요!</p>
+            {queuedCount > 0 && (
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-semibold">
+                +{queuedCount}건 더 있어요
+              </span>
+            )}
+          </div>
           <p className="text-green-100 text-xs mt-0.5 leading-relaxed">
             {firedAlarm.petName}에게 {firedAlarm.medicationName} {firedAlarm.dosage} 줄 시간입니다.
           </p>

@@ -7,6 +7,7 @@ type FiredAlarm = MedicationAlarm & { firedAt: string }
 
 type AlarmContextType = {
   firedAlarm: FiredAlarm | null
+  queuedCount: number
   dismiss: () => void
   requestPermission: () => void
   permissionGranted: boolean
@@ -14,6 +15,7 @@ type AlarmContextType = {
 
 const AlarmContext = createContext<AlarmContextType>({
   firedAlarm: null,
+  queuedCount: 0,
   dismiss: () => {},
   requestPermission: () => {},
   permissionGranted: false,
@@ -81,6 +83,7 @@ export default function AlarmProvider({ children }: { children: React.ReactNode 
     <AlarmContext.Provider
       value={{
         firedAlarm: firedAlarms[0] ?? null,
+        queuedCount: Math.max(0, firedAlarms.length - 1),
         dismiss: () => setFiredAlarms(prev => prev.slice(1)),
         requestPermission,
         permissionGranted,
