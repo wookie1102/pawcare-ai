@@ -70,7 +70,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // public/의 정적 파일(예: manifest.json, sw.js)은 확장자로 걸러서 미들웨어 자체를 안 태운다.
+  // 이전에는 .svg/.png 등만 제외돼 있어서 manifest.json·sw.js가 인증 리다이렉트에 걸렸는데,
+  // PWA 매니페스트와 서비스 워커는 로그인 여부와 무관하게 브라우저/OS가 직접 요청하는
+  // 리소스라 여기 걸리면 안 된다(특히 sw.js는 리다이렉트되면 MIME 타입이 안 맞아 서비스
+  // 워커 등록 자체가 실패한다). isPublic 목록에 경로를 하나씩 추가하는 것보다, public/에
+  // 새 정적 파일이 추가돼도 자동으로 안전하도록 확장자 기준으로 제외하는 쪽이 더 견고하다.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|js|ico|webmanifest)$).*)',
   ],
 }
