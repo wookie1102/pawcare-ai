@@ -45,7 +45,14 @@ export async function middleware(request: NextRequest) {
   const isPublic =
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
-    pathname.startsWith('/auth')
+    pathname.startsWith('/auth') ||
+    // /maintenance는 로그아웃 상태(특히 Supabase 자체가 문제일 때, 즉 아무도 로그인할 수 없을 때)에도
+    // 보여야 하는 페이지라 로그인 필요 목록에서 빠져야 한다 — 안 그러면 유지보수 안내를 보려다
+    // 로그인 화면으로 튕기는 상황이 된다.
+    pathname.startsWith('/maintenance') ||
+    // public/manifest.json이 PWA 아이콘으로 이 라우트를 직접 참조하는데, 매니페스트 아이콘은
+    // 로그인 전(홈 화면에 추가하는 시점 등)에도 브라우저/OS가 요청하므로 인증을 요구하면 안 된다.
+    pathname.startsWith('/api/icon')
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()
