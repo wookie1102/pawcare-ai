@@ -92,6 +92,19 @@ function safeParse<T>(key: string, fallback: T): T {
   }
 }
 
+// localStorage.setItem은 용량 초과(QuotaExceededError) 시 예외를 던지는데, 특히 사진이
+// 포함된 상담 기록/처방전이 쌓이면 브라우저 저장 한도(보통 5~10MB)를 넘기기 쉽다. 이 예외를
+// 그대로 흘려보내면 결과 화면 진입 시 실행되는 useEffect 안에서 터져서 화면이 깨질 수 있으므로,
+// 여기서 잡아서 실패 여부만 boolean으로 알려준다.
+function safeSetItem(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value)
+    return true
+  } catch {
+    return false
+  }
+}
+
 // 구버전 단일 프로필 → 다중 프로필 마이그레이션
 function migrateSinglePet() {
   if (typeof window === 'undefined') return
@@ -100,8 +113,8 @@ function migrateSinglePet() {
   try {
     const profile = JSON.parse(old)
     const withId = { ...profile, id: 'pet_migrated' }
-    localStorage.setItem(KEYS.PETS, JSON.stringify([withId]))
-    localStorage.setItem(KEYS.ACTIVE_PET_ID, 'pet_migrated')
+    safeSetItem(KEYS.PETS, JSON.stringify([withId]))
+    safeSetItem(KEYS.ACTIVE_PET_ID, 'pet_migrated')
     localStorage.removeItem('pawcare_pet_profile')
   } catch { /* ignore */ }
 }
@@ -118,12 +131,12 @@ export function savePet(pet: PetProfile): void {
   const updated = { ...pet, updatedAt: new Date().toISOString() }
   if (idx >= 0) pets[idx] = updated
   else pets.push(updated)
-  localStorage.setItem(KEYS.PETS, JSON.stringify(pets))
+  safeSetItem(KEYS.PETS, JSON.stringify(pets))
 }
 
 export function deletePet(id: string): void {
   const pets = getPets().filter(p => p.id !== id)
-  localStorage.setItem(KEYS.PETS, JSON.stringify(pets))
+  safeSetItem(KEYS.PETS, JSON.stringify(pets))
   if (getActivePetId() === id) {
     if (pets.length > 0) setActivePetId(pets[0].id)
     else localStorage.removeItem(KEYS.ACTIVE_PET_ID)
@@ -136,7 +149,7 @@ export function getActivePetId(): string | null {
 }
 
 export function setActivePetId(id: string): void {
-  localStorage.setItem(KEYS.ACTIVE_PET_ID, id)
+  safeSetItem(KEYS.ACTIVE_PET_ID, id)
 }
 
 export function getActivePet(): PetProfile | null {
@@ -160,7 +173,7 @@ export function saveHealthLog(log: HealthLog): void {
   const idx = logs.findIndex(l => l.date === log.date)
   if (idx >= 0) logs[idx] = log
   else logs.push(log)
-  localStorage.setItem(KEYS.HEALTH_LOGS, JSON.stringify(logs))
+  safeSetItem(KEYS.HEALTH_LOGS, JSON.stringify(logs))
 }
 
 export function getTodayLog(): HealthLog | null {
@@ -200,12 +213,16 @@ export function savePrescription(p: Prescription): void {
   const idx = list.findIndex(x => x.id === p.id)
   if (idx >= 0) list[idx] = p
   else list.unshift(p)
-  localStorage.setItem(KEYS.PRESCRIPTIONS, JSON.stringify(list))
+
+  if (safeSetItem(KEYS.PRESCRIPTIONS, JSON.stringify(list))) return
+  // 용량 초과: 오래된 처방전의 사진부터 지우고 재시도 (최근 5건만 사진 유지)
+  const stripped = list.map((x, i) => (i < 5 ? x : { ...x, imageDataUrl: undefined }))
+  safeSetItem(KEYS.PRESCRIPTIONS, JSON.stringify(stripped))
 }
 
 export function deletePrescription(id: string): void {
   const list = getPrescriptions().filter(p => p.id !== id)
-  localStorage.setItem(KEYS.PRESCRIPTIONS, JSON.stringify(list))
+  safeSetItem(KEYS.PRESCRIPTIONS, JSON.stringify(list))
 }
 
 // ── 복약 체크 ────────────────────────────────────────────
@@ -220,7 +237,7 @@ export function setMedCheck(check: MedicationCheck): void {
   )
   if (idx >= 0) checks[idx] = check
   else checks.push(check)
-  localStorage.setItem(KEYS.MED_CHECKS, JSON.stringify(checks))
+  safeSetItem(KEYS.MED_CHECKS, JSON.stringify(checks))
 }
 
 export function getTodayChecks(): MedicationCheck[] {
@@ -237,7 +254,17 @@ export function saveConsultation(record: ConsultationRecord): void {
   const list = getConsultations()
   list.unshift(record)
   if (list.length > 50) list.splice(50)
-  localStorage.setItem(KEYS.CONSULTATIONS, JSON.stringify(list))
+
+  if (safeSetItem(KEYS.CONSULTATIONS, JSON.stringify(list))) return
+
+  // 용량 초과: 오래된 기록의 첨부 사진부터 지우고 재시도 (최근 5건만 사진 유지)
+  const stripped = list.map((r, i) =>
+    i < 5 ? r : { ...r, messages: r.messages.map(m => ({ ...m, imageDataUrl: undefined })) }
+  )
+  if (safeSetItem(KEYS.CONSULTATIONS, JSON.stringify(stripped))) return
+
+  // 그래도 초과하면 기록 개수 자체를 줄여서 최후 시도 (그래도 실패하면 이번 저장은 포기하되 앱은 죽지 않는다)
+  safeSetItem(KEYS.CONSULTATIONS, JSON.stringify(stripped.slice(0, 20)))
 }
 
 export function getRecentConsultations(n = 3): ConsultationRecord[] {
