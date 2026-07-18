@@ -193,7 +193,7 @@ export default function ChatPage() {
 
     if (checkAnswerForEmergency(question, answer)) {
       setTimeout(() => {
-        const msg = makeResultMessage('emergency', systems, profile?.name || '반려동물')
+        const msg = makeResultMessage('emergency', systems, profile?.name || '반려동물', questions, newAnswers)
         addAiMessage(msg, { isResult: true, urgency: 'emergency' })
         setUrgency('emergency')
         setEmergencyStop(true)

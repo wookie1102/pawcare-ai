@@ -102,7 +102,6 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'respiratory',
       text: '이 증상이 얼마나 됐나요?',
       options: ['오늘 갑자기 시작됐어요', '2~3일 됐어요', '1~2주 됐어요', '1개월 이상이에요'],
-      urgencySignals: ['오늘 갑자기 시작됐어요'],
     },
     {
       id: 'resp_nasal',
@@ -329,7 +328,6 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'urinary',
       text: '이 증상이 얼마나 됐나요?',
       options: ['오늘부터예요', '어제부터예요', '2~3일 됐어요', '1주일 이상이에요'],
-      urgencySignals: ['오늘부터예요', '어제부터예요'],
     },
   ],
   digestive: [
@@ -338,13 +336,12 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'digestive',
       text: '증상이 언제부터 시작됐나요?',
       options: ['오늘 갑자기 시작됐어요', '어제부터예요', '2~3일 됐어요', '1주일 이상이에요'],
-      urgencySignals: ['오늘 갑자기 시작됐어요'],
     },
     {
       id: 'dige_freq',
       system: 'digestive',
       text: '구토나 설사를 얼마나 자주 하나요?',
-      options: ['한 번만 했어요', '하루 1~2회', '하루 3~5회', '하루 6회 이상'],
+      options: ['아직 안 했어요 (헛구역질만 해요)', '한 번만 했어요', '하루 1~2회', '하루 3~5회', '하루 6회 이상'],
       urgencySignals: ['하루 6회 이상', '하루 3~5회'],
     },
     {
@@ -443,7 +440,6 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'general',
       text: '증상이 시작된 지 얼마나 됐나요?',
       options: ['오늘 갑자기 생겼어요', '2~3일 됐어요', '1주일 정도 됐어요', '1개월 이상이에요'],
-      urgencySignals: ['오늘 갑자기 생겼어요'],
     },
     {
       id: 'gen_vitality',
@@ -638,7 +634,6 @@ const QUESTION_BANKS: Record<QuestionSystem, Question[]> = {
       system: 'eye',
       text: '언제부터 증상이 생겼나요?',
       options: ['오늘 갑자기', '2~3일 됐어요', '1주일 이상', '오래됐는데 점점 심해져요'],
-      urgencySignals: ['오늘 갑자기'],
     },
   ],
   ear: [
@@ -1214,6 +1209,19 @@ export function assessUrgency(questions: Question[], answers: Record<string, str
     const ans = answers[q.id]
     if (ans && q.emergencyTriggers?.includes(ans)) return 'emergency'
   }
+  // 혈변/혈토/복부 통증/흑색변/고열 등은 다른 답변과 무관하게 단독으로 emergency
+  // (예: 검은 변 하나만 있어도 상부 소화관 출혈 가능성이 있으므로, 아래의
+  // "신호 2개 이상" 카운트 결과를 기다리지 않고 먼저 확정한다)
+  // 반드시 질문 ID까지 함께 매칭한다 — 같은 텍스트("많이 아파해요" 등)가
+  // 정형외과 촉진 질문처럼 훨씬 낮은 위중도의 다른 질문에도 쓰이기 때문에,
+  // 텍스트만으로 전체 답변을 훑으면 무관한 질문에서도 응급으로 잘못 튈 수 있다.
+  const hardTrigger = EMERGENCY_REASONS.some(r => {
+    const userAns = answers[r.questionId]
+    if (!userAns) return false
+    return Array.isArray(r.answer) ? r.answer.includes(userAns) : r.answer === userAns
+  })
+  if (hardTrigger) return 'emergency'
+
   // urgencySignals 누적 체크 (2개 이상이면 emergency)
   let urgencyCount = 0
   for (const q of questions) {
@@ -1222,18 +1230,6 @@ export function assessUrgency(questions: Question[], answers: Record<string, str
   }
   if (urgencyCount >= 2) return 'emergency'
   if (urgencyCount === 1) return 'caution'
-
-  // 혈변/혈토/복부 통증/흑색변/고열 등은 emergency 수준으로 상향
-  const emergencyFromAnswers = [
-    '구토에 피가 보여요', '대변에 피가 섞여요',
-    '검은색이에요 (타르 같아요)',
-    '많이 아파해요', '배가 빵빵하게 부풀어 있어요',
-    '하루 6회 이상',
-    '거의 움직이지 않아요', '쓰러져 있어요',
-    '쓰러지거나 일어나지 못해요',
-    '뜨겁게 느껴져요',
-  ]
-  if (Object.values(answers).some(a => emergencyFromAnswers.includes(a))) return 'emergency'
 
   const cautionAnswers = [
     '창백하거나 흰색이에요', '많이 헐떡거려요', '몸을 심하게 떨었어요', '비틀거리거나 쓰러졌어요',
@@ -1268,6 +1264,49 @@ export function assessUrgency(questions: Question[], answers: Record<string, str
   return 'watch'
 }
 
+type EmergencyReason = {
+  questionId: string
+  answer: string | string[]
+  explanation: string
+  extraLines?: (name: string) => string[]
+}
+
+// 답변 하나만으로도 응급으로 확정되는 소견들 — 어떤 답변을 선택해서
+// 응급으로 판단됐는지 결과 메시지에 그대로 인용해서 보여주기 위한 목록.
+const EMERGENCY_REASONS: EmergencyReason[] = [
+  { questionId: 'dige_blood', answer: '구토에 피가 보여요', explanation: '상부 소화관(위·소장) 출혈 가능성이 있는 소견이에요. 혈액검사 + 위장관 초음파/내시경이 필요해요.' },
+  { questionId: 'dige_stool_color', answer: '검은색이에요 (타르 같아요)', explanation: '흑색변(멜레나)은 상부 소화관(위·소장) 출혈 가능성을 의미해요. 혈액검사 + 위장관 초음파/내시경이 필요해요.' },
+  { questionId: 'dige_blood', answer: '대변에 피가 섞여요', explanation: '하부 소화관(대장·직장) 출혈 가능성이 있는 소견이에요. 신체검사 + 혈액검사 + 대장 평가가 필요해요.' },
+  { questionId: 'dige_abdomen', answer: '배가 빵빵하게 부풀어 있어요', explanation: '복부 팽창은 위확장·염전(GDV) 또는 복수 가능성을 의미해요. 즉시 확인이 필요해요.' },
+  { questionId: 'dige_abdomen', answer: '많이 아파해요', explanation: '배를 눌렀을 때 심하게 아파하는 반응은 장중첩·췌장염 악화·복막염 등을 의심할 수 있는 소견이에요.' },
+  { questionId: 'dige_fever', answer: '뜨겁게 느껴져요', explanation: '발열과 함께 나타난 소화기 증상은 감염성 장염(파보바이러스 포함) 가능성을 의미해요.' },
+  { questionId: 'dige_freq', answer: '하루 6회 이상', explanation: '하루 6회 이상의 구토·설사는 짧은 시간 안에 심한 탈수와 전해질 불균형을 일으킬 수 있는 수준이에요.' },
+  { questionId: 'dige_vitality', answer: '쓰러지거나 일어나지 못해요', explanation: '스스로 일어나지 못하는 상태는 쇼크나 중증 탈수를 의심할 수 있는 소견이에요.' },
+  { questionId: 'dige_combo_vitality', answer: ['거의 움직이지 않아요', '쓰러져 있어요'], explanation: '구토·설사가 함께 있으면서 거의 움직이지 못하는 상태는 심한 탈수·쇼크 가능성을 의미해요.' },
+  { questionId: 'dige_combo_dehydrate', answer: '그대로 있어요', explanation: '피부를 집었다 놨을 때 그대로 남아있는 건 중증 탈수 신호예요. 즉시 수액 치료가 필요해요.' },
+  { questionId: 'gen_vitality', answer: '거의 움직이지 않아요', explanation: '전신 활력이 거의 없어 움직이지 못하는 상태는 쇼크나 중증 질환을 의심할 수 있는 소견이에요.' },
+  { questionId: 'uri_vitality', answer: '거의 움직이지 않아요', explanation: '비뇨기 증상과 함께 거의 움직이지 못하는 상태는 요독증이나 요폐색으로 인한 쇼크 가능성을 의심할 수 있는 소견이에요.' },
+  { questionId: 'resp_gum', answer: '파랗거나 보라색이에요', explanation: '잇몸·혀의 청색증은 산소 공급 저하 상태를 의미해요. 즉시 산소 치료가 필요해요.' },
+  { questionId: 'neuro_type', answer: '의식을 잃었어요', explanation: '의식 소실은 심각한 신경학적 응급 상황이에요.' },
+  { questionId: 'neuro_now', answer: '지금도 발작 중이에요', explanation: '발작이 진행 중인 상태는 뇌 손상 위험이 있어 즉시 처치가 필요해요.' },
+  { questionId: 'uri_output', answer: '소변을 아예 못 봐요', explanation: '완전한 요폐(소변을 전혀 못 보는 상태)는 방광 파열이나 요독증으로 이어질 수 있는 응급 상황이에요.' },
+  {
+    questionId: 'cushing_crisis',
+    answer: '네, 심하게 처져요',
+    explanation: '애디슨 위기(부신 기능 저하) 가능성이 있는 소견이에요. 전해질(Na/K) 검사와 수액 치료가 시급해요.',
+    extraLines: name => [`병원에 도착하면 ${name}의 쿠싱 치료제(베토리릴 등) 마지막 복용 시각과 최근 용량 변경 여부를 꼭 알려주세요.`],
+  },
+  {
+    questionId: 'diabetes_hypo',
+    answer: '네, 그런 증상이 있어요',
+    explanation: '저혈당 쇼크 가능성이 있는 소견이에요. 즉시 혈당 확인과 포도당 공급이 필요해요.',
+    extraLines: name => [
+      '이동 전 삼킬 수 있는 상태라면 꿀이나 설탕물을 잇몸에 소량 발라주세요 (억지로 먹이지는 마세요).',
+      `병원에 도착하면 ${name}의 마지막 인슐린 투여 시각과 용량을 꼭 알려주세요.`,
+    ],
+  },
+]
+
 export function makeResultMessage(
   urgency: UrgencyLevel,
   systems: QuestionSystem[],
@@ -1281,24 +1320,29 @@ export function makeResultMessage(
     const ans = answers ?? {}
     const emergLines: string[] = ['⚠️ 지금 바로 응급 병원에 가세요!', '', `${name}의 증상이 응급 상황일 가능성이 높습니다.`, '지체 없이 가장 가까운 동물병원 응급실로 이동해주세요.', '']
 
-    // 원인에 따른 구체적 응급 안내
-    if (ans['dige_blood'] === '구토에 피가 보여요' || ans['dige_stool_color'] === '검은색이에요 (타르 같아요)') {
-      emergLines.push('[주요 소견] 상부 소화관 출혈 가능성 — 혈액검사 + 위장관 초음파/내시경 필요')
-    } else if (ans['dige_blood'] === '대변에 피가 섞여요') {
-      emergLines.push('[주요 소견] 하부 소화관 출혈 가능성 — 신체검사 + 혈액검사 + 대장 평가 필요')
-    } else if (ans['dige_abdomen'] === '배가 빵빵하게 부풀어 있어요') {
-      emergLines.push('[주요 소견] 복부 팽창 — 위확장·염전(GDV) 또는 복수 가능성 배제 필요')
-    } else if (ans['dige_fever'] === '뜨겁게 느껴져요') {
-      emergLines.push('[주요 소견] 발열 + 소화기 증상 — 감염성 장염(파보 포함) 가능성 확인 필요')
-    } else if (ans['resp_gum'] === '파랗거나 보라색이에요') {
-      emergLines.push('[주요 소견] 청색증 — 산소 공급 저하 상태. 산소 치료가 즉시 필요해요.')
-    } else if (ans['cushing_crisis'] === '네, 심하게 처져요') {
-      emergLines.push('[주요 소견] 애디슨 위기(부신 기능 저하) 가능성 — 전해질(Na/K) 검사와 수액 치료가 시급해요.')
-      emergLines.push(`병원에 도착하면 ${name}의 쿠싱 치료제(베토리릴 등) 마지막 복용 시각과 최근 용량 변경 여부를 꼭 알려주세요.`)
-    } else if (ans['diabetes_hypo'] === '네, 그런 증상이 있어요') {
-      emergLines.push('[주요 소견] 저혈당 쇼크 가능성 — 즉시 혈당 확인과 포도당 공급이 필요해요.')
-      emergLines.push('이동 전 삼킬 수 있는 상태라면 꿀이나 설탕물을 잇몸에 소량 발라주세요 (억지로 먹이지는 마세요).')
-      emergLines.push(`병원에 도착하면 ${name}의 마지막 인슐린 투여 시각과 용량을 꼭 알려주세요.`)
+    const matched = EMERGENCY_REASONS.filter(r => {
+      const userAns = ans[r.questionId]
+      if (!userAns) return false
+      return Array.isArray(r.answer) ? r.answer.includes(userAns) : r.answer === userAns
+    })
+
+    if (matched.length > 0) {
+      emergLines.push('[응급 판단 근거]')
+      for (const r of matched) {
+        emergLines.push(`• "${ans[r.questionId]}"를 선택하셔서 → ${r.explanation}`)
+      }
+      for (const r of matched) {
+        if (r.extraLines) emergLines.push(...r.extraLines(name))
+      }
+    } else if (questions) {
+      // 단독 응급 소견은 없지만, 경고 신호 2개 이상이 겹쳐서 응급으로 판단된 경우
+      const contributing = questions
+        .filter(q => ans[q.id] && q.urgencySignals?.includes(ans[q.id]))
+        .map(q => ans[q.id])
+      if (contributing.length >= 2) {
+        emergLines.push('[응급 판단 근거]')
+        emergLines.push(`• 다음 답변이 함께 나타나 응급 수준으로 판단했어요: ${contributing.map(a => `"${a}"`).join(', ')}`)
+      }
     }
 
     emergLines.push('', '이동 중에는:')
