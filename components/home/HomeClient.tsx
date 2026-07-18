@@ -12,6 +12,7 @@ import {
   type HealthLog,
   type PetProfile,
 } from '@/lib/storage'
+import { localDateStr } from '@/lib/utils'
 
 type Tab = 'home' | 'record'
 
@@ -60,7 +61,7 @@ export default function HomeClient({ displayName }: { displayName: string }) {
   }, [])
 
   function handleSave() {
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateStr()
     const log: HealthLog = {
       date: today,
       breathingRate: form.breathingRate,

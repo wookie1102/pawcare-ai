@@ -14,6 +14,7 @@ import {
   getAlarms, saveAlarm, deleteAlarm, getAlarmsForMedication,
   deleteAlarmsForPrescription, type MedicationAlarm,
 } from '@/lib/alarms'
+import { localDateStr } from '@/lib/utils'
 
 const DUMMY_MEDS: Medication[] = [
   {
@@ -63,7 +64,7 @@ export default function PrescriptionPage() {
   const [alarmModal, setAlarmModal] = useState<{ med: Medication; prescriptionId: string } | null>(null)
   const [alarmTimes, setAlarmTimes] = useState<{ time: string; enabled: boolean }[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateStr()
 
   function refresh() {
     setPrescriptions(getPrescriptions())
@@ -90,7 +91,7 @@ export default function PrescriptionPage() {
         id: Date.now().toString(), date: today,
         imageDataUrl: previewUrl || undefined,
         vetName: '김민준 수의사', clinicName: '그린동물병원',
-        nextVisit: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+        nextVisit: localDateStr(new Date(Date.now() + 14 * 86400000)),
         medications: DUMMY_MEDS.map(m => ({ ...m, id: m.id + '_' + Date.now(), startDate: today })),
       }
       savePrescription(newP)

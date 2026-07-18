@@ -1,3 +1,5 @@
+import { localDateStr } from './utils'
+
 export type PetProfile = {
   id: string
   name: string
@@ -177,12 +179,12 @@ export function saveHealthLog(log: HealthLog): void {
 }
 
 export function getTodayLog(): HealthLog | null {
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateStr()
   return getHealthLogs().find(l => l.date === today) ?? null
 }
 
 export function getRecentAverages(): { breathing: number | null; water: number | null; meal: number | null; vitality: number | null } {
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateStr()
   const logs = getHealthLogs()
     .filter(l => l.date < today)
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -241,7 +243,7 @@ export function setMedCheck(check: MedicationCheck): void {
 }
 
 export function getTodayChecks(): MedicationCheck[] {
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateStr()
   return getMedChecks().filter(c => c.date === today)
 }
 

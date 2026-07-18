@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { X, Copy, Check, Download, Share2 } from 'lucide-react'
 import type { PetProfile } from '@/lib/storage'
 import type { QuestionSystem, UrgencyLevel, Question } from '@/lib/chatLogic'
+import { localDateStr } from '@/lib/utils'
 
 type Props = {
   onClose: () => void
@@ -159,7 +160,7 @@ export default function SOAPReport({ onClose, symptomText, profile, urgency, sys
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `pawcare-soap-${profile?.name || '반려동물'}-${now.toISOString().split('T')[0]}.png`
+      a.download = `pawcare-soap-${profile?.name || '반려동물'}-${localDateStr(now)}.png`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -176,7 +177,7 @@ export default function SOAPReport({ onClose, symptomText, profile, urgency, sys
     setImageBusy('share')
     try {
       const blob = await captureReportImage()
-      const fileName = `pawcare-soap-${now.toISOString().split('T')[0]}.png`
+      const fileName = `pawcare-soap-${localDateStr(now)}.png`
       const file = blob ? new File([blob], fileName, { type: 'image/png' }) : null
 
       if (file && navigator.canShare?.({ files: [file] })) {
