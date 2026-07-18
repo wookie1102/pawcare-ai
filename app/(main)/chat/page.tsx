@@ -17,6 +17,7 @@ import {
   makeBehaviorResultMessage,
   getBehaviorTypeName,
   answerFollowUp,
+  preloadFollowUpHandlers,
   generateOpener,
   reorderByChiefComplaint,
   type Question,
@@ -100,9 +101,12 @@ export default function ChatPage() {
     setProfile(getActivePet())
   }, [])
 
-  // result 단계 진입 시 Q&A DB 미리 로드
+  // result 단계 진입 시 Q&A DB + 팔로우업 답변 데이터 미리 로드
   useEffect(() => {
-    if (step === 'result') loadQADB()
+    if (step === 'result') {
+      loadQADB()
+      preloadFollowUpHandlers()
+    }
   }, [step])
 
   useEffect(() => {
@@ -310,10 +314,10 @@ export default function ChatPage() {
         addAiMessage(qaAnswer)
       } else {
         // 검색 결과 없으면 기존 로직 fallback
-        addAiMessage(answerFollowUp(text, profile?.name))
+        addAiMessage(await answerFollowUp(text, profile?.name))
       }
     } catch {
-      addAiMessage(answerFollowUp(text, profile?.name))
+      addAiMessage(await answerFollowUp(text, profile?.name))
     } finally {
       setFollowUpLoading(false)
     }
