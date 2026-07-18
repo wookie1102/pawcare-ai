@@ -146,6 +146,11 @@ export default function HealthPage() {
   const streak = (() => {
     let count = 0
     const d = new Date()
+    // 오늘 기록을 아직 안 넣었다고 해서 그동안의 연속 기록이 끊긴 건 아니므로,
+    // 오늘 항목이 비어있으면 어제부터 세기 시작한다.
+    if (!logMap[d.toISOString().split('T')[0]]) {
+      d.setDate(d.getDate() - 1)
+    }
     while (true) {
       const key = d.toISOString().split('T')[0]
       if (!logMap[key]) break

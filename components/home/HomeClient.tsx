@@ -90,7 +90,7 @@ export default function HomeClient({ displayName }: { displayName: string }) {
   const comparisonNotes = [
     makeComparisonNote('호흡수', form.breathingRate, averages.breathing, '회/분'),
     makeComparisonNote('음수량', form.waterIntake, averages.water, 'ml'),
-    makeComparisonNote('식사량', form.mealAmount, averages.meal, '%'),
+    makeComparisonNote('식사량', form.mealAmount, averages.meal, 'ml'),
   ].filter(Boolean) as string[]
 
   return (
@@ -253,16 +253,15 @@ export default function HomeClient({ displayName }: { displayName: string }) {
                   <input
                     type="number"
                     min="0"
-                    max="100"
                     value={form.mealAmount}
                     onChange={e => setForm({ ...form, mealAmount: e.target.value })}
-                    placeholder="예: 80"
+                    placeholder="예: 200"
                     className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                   />
-                  <span className="text-xs text-gray-400 whitespace-nowrap">% (평소 대비)</span>
+                  <span className="text-xs text-gray-400 whitespace-nowrap">ml</span>
                 </div>
                 {averages.meal && (
-                  <p className="text-xs text-gray-400 mt-1">평균 {averages.meal}%</p>
+                  <p className="text-xs text-gray-400 mt-1">평균 {averages.meal}ml</p>
                 )}
               </div>
 
