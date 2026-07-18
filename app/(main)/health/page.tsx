@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { getHealthLogs, saveHealthLog, getTodayLog, getActivePet, type HealthLog } from '@/lib/storage'
 
 type ChartMetric = 'vitality' | 'mealAmount' | 'waterIntake' | 'breathingRate'

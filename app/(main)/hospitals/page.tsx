@@ -90,10 +90,6 @@ export default function HospitalsPage() {
       : a.place_name.localeCompare(b.place_name)
   )
 
-  const mapSrc = coords
-    ? `https://map.kakao.com/link/map/내위치,${coords.lat},${coords.lng}`
-    : null
-
   return (
     <div className="max-w-md mx-auto pb-4">
       {/* 지도 영역 */}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Pencil, Trash2, Check, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 import { getPets, savePet, deletePet, setActivePetId, getActivePetId, type PetProfile } from '@/lib/storage'
 import LegalDisclaimer from '@/components/LegalDisclaimer'
 
@@ -135,6 +135,11 @@ export default function ProfilePage() {
                       <p className="text-sm font-semibold text-gray-800">{pet.name}</p>
                       {pet.id === activeId && (
                         <span className="text-[9px] bg-green-100 text-green-600 font-bold px-1.5 py-0.5 rounded-full">현재</span>
+                      )}
+                      {pet.id === savedId && (
+                        <span className="flex items-center gap-0.5 text-[9px] bg-blue-100 text-blue-600 font-bold px-1.5 py-0.5 rounded-full">
+                          <Check size={9} />저장됨
+                        </span>
                       )}
                     </div>
                     <p className="text-xs text-gray-400">

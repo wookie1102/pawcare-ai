@@ -6,12 +6,12 @@ import LegalDisclaimer from '@/components/LegalDisclaimer'
 import { useAlarmContext } from '@/components/AlarmProvider'
 import {
   getPrescriptions, savePrescription, deletePrescription,
-  getMedChecks, setMedCheck, getTodayChecks, getHealthLogs,
+  setMedCheck, getTodayChecks, getHealthLogs,
   getActivePet,
   type Prescription, type Medication, type MedicationCheck,
 } from '@/lib/storage'
 import {
-  getAlarms, saveAlarm, deleteAlarm, toggleAlarm, getAlarmsForMedication,
+  getAlarms, saveAlarm, deleteAlarm, getAlarmsForMedication,
   deleteAlarmsForPrescription, type MedicationAlarm,
 } from '@/lib/alarms'
 
@@ -86,7 +86,6 @@ export default function PrescriptionPage() {
   function handleAnalyze() {
     setAnalyzing(true)
     setTimeout(() => {
-      const pet = getActivePet()
       const newP: Prescription = {
         id: Date.now().toString(), date: today,
         imageDataUrl: previewUrl || undefined,

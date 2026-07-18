@@ -85,7 +85,6 @@ export default function ChatPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [systems, setSystems] = useState<QuestionSystem[]>([])
   const [urgency, setUrgency] = useState<UrgencyLevel>('watch')
-  const [emergencyStop, setEmergencyStop] = useState(false)
   const [behaviorType, setBehaviorType] = useState<BehaviorType>('general_behavior')
   const [showSOAP, setShowSOAP] = useState(false)
   const [followUpText, setFollowUpText] = useState('')
@@ -142,7 +141,6 @@ export default function ChatPage() {
     setAnswers({})
     setSystems([])
     setUrgency('watch')
-    setEmergencyStop(false)
     setBehaviorType('general_behavior')
     setShowSOAP(false)
     setFollowUpText('')
@@ -205,7 +203,6 @@ export default function ChatPage() {
         urgency: 'emergency',
       })
       setUrgency('emergency')
-      setEmergencyStop(true)
       setStep('result')
       return
     }
@@ -249,7 +246,6 @@ export default function ChatPage() {
         const msg = makeResultMessage('emergency', systems, profile?.name || '반려동물', questions, newAnswers)
         addAiMessage(msg, { isResult: true, urgency: 'emergency' })
         setUrgency('emergency')
-        setEmergencyStop(true)
         setStep('result')
       }, 300)
       return
