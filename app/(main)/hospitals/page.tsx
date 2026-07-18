@@ -31,6 +31,12 @@ export default function HospitalsPage() {
     try {
       const res = await fetch(`/api/hospitals?lat=${lat}&lng=${lng}`)
       const data = await res.json()
+      if (!res.ok) {
+        // 검색 자체가 실패한 것이라 "병원이 없다"가 아니라 명확한 오류로 안내한다.
+        setError('병원 검색에 실패했어요. 잠시 후 다시 시도하거나, 급하다면 포털에서 "동물병원"을 직접 검색해주세요.')
+        setPlaces([])
+        return
+      }
       setPlaces(data.documents ?? [])
     } catch {
       setError('병원 정보를 불러오지 못했어요.')

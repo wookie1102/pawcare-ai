@@ -24,7 +24,10 @@ export function useAlarmContext() {
 }
 
 export default function AlarmProvider({ children }: { children: React.ReactNode }) {
-  const [firedAlarm, setFiredAlarm] = useState<FiredAlarm | null>(null)
+  // 같은 시각에 약이 2개 이상 예약된 경우를 위한 대기열. firedAlarms[0]이 현재 표시 중인 알람이고,
+  // dismiss()는 맨 앞을 제거해 다음 알람을 이어서 보여준다 (예전에는 첫 매칭에서 바로 break 해버려서
+  // 같은 시각의 두 번째 이후 약 알림이 조용히 사라졌었다).
+  const [firedAlarms, setFiredAlarms] = useState<FiredAlarm[]>([])
   const [permissionGranted, setPermissionGranted] = useState(false)
   const firedRef = useRef<Set<string>>(new Set())
 
@@ -46,13 +49,14 @@ export default function AlarmProvider({ children }: { children: React.ReactNode 
     const mm = String(now.getMinutes()).padStart(2, '0')
     const currentTime = `${hh}:${mm}`
 
+    const newlyFired: FiredAlarm[] = []
     for (const alarm of getAlarms()) {
-      if (!alarm.enabled) continue
+      if (!alarm.enabled || alarm.time !== currentTime) continue
       const key = `${alarm.id}_${currentTime}_${now.toDateString()}`
-      if (alarm.time !== currentTime || firedRef.current.has(key)) continue
+      if (firedRef.current.has(key)) continue
 
       firedRef.current.add(key)
-      setFiredAlarm({ ...alarm, firedAt: currentTime })
+      newlyFired.push({ ...alarm, firedAt: currentTime })
 
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('💊 복약 시간이에요!', {
@@ -61,7 +65,9 @@ export default function AlarmProvider({ children }: { children: React.ReactNode 
           tag: alarm.id,
         })
       }
-      break
+    }
+    if (newlyFired.length > 0) {
+      setFiredAlarms(prev => [...prev, ...newlyFired])
     }
   }, [])
 
@@ -72,7 +78,14 @@ export default function AlarmProvider({ children }: { children: React.ReactNode 
   }, [checkAlarms])
 
   return (
-    <AlarmContext.Provider value={{ firedAlarm, dismiss: () => setFiredAlarm(null), requestPermission, permissionGranted }}>
+    <AlarmContext.Provider
+      value={{
+        firedAlarm: firedAlarms[0] ?? null,
+        dismiss: () => setFiredAlarms(prev => prev.slice(1)),
+        requestPermission,
+        permissionGranted,
+      }}
+    >
       {children}
     </AlarmContext.Provider>
   )

@@ -21,11 +21,18 @@ const URGENCY_LABEL: Record<UrgencyLevel, string> = {
   emergency: '🔴 긴급 (즉시 응급 병원 방문 필요)',
 }
 
-const SYSTEM_LABEL: Partial<Record<QuestionSystem, string>> = {
+const SYSTEM_LABEL: Record<QuestionSystem, string> = {
   respiratory: '호흡기계',
   neurological: '신경계',
   urinary: '비뇨기계',
   digestive: '소화기계',
+  skin: '피부계',
+  eye: '안과',
+  ear: '이과(귀)',
+  orthopedic: '정형외과(근골격계)',
+  dental: '구강/치과',
+  lump: '혹/종괴',
+  endocrine: '내분비계',
   general: '전반적',
 }
 
