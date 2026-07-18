@@ -14,9 +14,16 @@ export async function middleware(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request })
 
+  // lib/supabase/client.ts, server.ts와 달리 여기만 fallback 없이 non-null 단언(!)을 쓰고 있어서,
+  // 환경변수가 비어있거나 잘못되면(과거에 실제로 있었던 문제 — 유지보수 모드를 켰다 껐다 했던 이력 참고)
+  // 모든 요청에서 미들웨어 자체가 예외를 던져 전체 사이트가 500이 된다. 자리표시자로 대체해서,
+  // 최악의 경우에도 "로그인 필요"로 정상 처리되게(로그인 화면으로 리다이렉트) 한다.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
