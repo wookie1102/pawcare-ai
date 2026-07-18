@@ -37,7 +37,7 @@ const EMERGENCY_KW = [
 // ("쓰러질 뻔했는데 지금은 괜찮아요")까지 그대로 매칭되면 위험 신호가 없다고
 // 안심시키려 쓴 문장에도 응급 배너가 떠 버린다. 키워드 주변의 부정/해소 표현을
 // 함께 확인해서 이런 오탐을 걸러낸다.
-const NEGATION_NEAR_KEYWORD = /지\s*않|진\s*않|지는\s*않|은\s*아니|는\s*아니|이\s*아니|가\s*아니|건\s*아니|게\s*아니|지\s*마|은\s*없|는\s*없|도\s*없|뻔했|뻔함/
+const NEGATION_NEAR_KEYWORD = /지\s*않|진\s*않|지는\s*않|은\s*아니|는\s*아니|이\s*아니|가\s*아니|건\s*아니|게\s*아니|지\s*마|은\s*없|는\s*없|도\s*없|뻔했|뻔함|은\s*안\s|는\s*안\s/
 const CURRENTLY_RESOLVED = /지금은?\s*(괜찮|멀쩡|정상)/
 
 function isNegatedMatch(text: string, index: number, kwLen: number): boolean {
@@ -2641,7 +2641,33 @@ export function buildBehaviorQuestions(type: BehaviorType): Question[] {
   return BEHAVIOR_QUESTION_BANKS[type] ?? BEHAVIOR_QUESTION_BANKS.general_behavior
 }
 
-export function makeBehaviorResultMessage(type: BehaviorType, petName: string): string {
+// 행동 유형별 답변 중 방향을 바꿀 만큼 중요한 답변이 있으면 한 줄 덧붙인다.
+function buildBehaviorNote(type: BehaviorType, answers: Record<string, string>): string[] {
+  const notes: string[] = []
+  if (type === 'separation_anxiety' && answers['sa_duration'] === '8시간 이상') {
+    notes.push('', '💡 하루 8시간 이상 혼자 두는 상황이라면 행동 교정만으로는 한계가 있을 수 있어요. 도그워커나 데이케어 이용도 함께 고려해보세요.')
+  }
+  if (type === 'aggression' && answers['agg_change'] === '건강 문제가 있었어요') {
+    notes.push('', '💡 최근 건강 문제 이후 공격성이 생겼다면 통증이 원인일 가능성이 높아요. 행동 교정 전에 반드시 신체 검진을 먼저 받아보세요.')
+  }
+  if (type === 'cognitive_dysfunction' && answers['cog_other'] && answers['cog_other'] !== '없어요') {
+    notes.push('', `💡 "${answers['cog_other']}" 같은 신체 증상이 함께 있다면 인지장애만이 아니라 다른 질환(신장·관절 등)이 겹쳐 있을 수 있어요. 병원 검진을 미루지 마세요.`)
+  }
+  if (type === 'fear' && answers['fear_expr'] === '오줌/대변 실수를 해요') {
+    notes.push('', '💡 극도의 두려움으로 배변 실수까지 한다면 스트레스 수준이 상당히 높은 상태예요. 자극을 줄이는 환경 조성이 우선이에요.')
+  }
+  if (type === 'compulsive' && answers['comp_freq'] === '거의 멈추지 않아요') {
+    notes.push('', '💡 거의 멈추지 않는 수준이라면 의학적 원인이나 2차 피부 손상 가능성이 높아요. 행동 교정보다 병원 진료가 먼저예요.')
+  }
+  return notes
+}
+
+export function makeBehaviorResultMessage(
+  type: BehaviorType,
+  petName: string,
+  questions?: Question[],
+  answers?: Record<string, string>,
+): string {
   const name = petName || '반려동물'
   const messages: Record<BehaviorType, string> = {
     separation_anxiety: [
@@ -2796,7 +2822,16 @@ export function makeBehaviorResultMessage(type: BehaviorType, petName: string): 
       '구체적인 행동을 더 설명해주시면 아래 입력창에서 계속 질문하실 수 있어요!',
     ].join('\n'),
   }
-  return messages[type]
+  const base = messages[type]
+  if (!questions || !answers || Object.keys(answers).length === 0) return base
+
+  const summaryLines: string[] = ['', '【확인된 답변】']
+  for (const q of questions) {
+    const a = answers[q.id]
+    if (a) summaryLines.push(`• ${a}`)
+  }
+
+  return [base, ...summaryLines, ...buildBehaviorNote(type, answers)].join('\n')
 }
 
 // ─── 대화형 오프너 & 질문 순서 조정 ─────────────────────────────────────────
@@ -2864,14 +2899,14 @@ export function generateOpener(text: string, petName: string): string {
   const name = petName || '반려동물'
 
   // 복합 증상 조합을 개별 키워드보다 먼저 체크
-  const hasVomit = ['구토', '토했', '토를', '토하', '토해'].some(kw => text.includes(kw))
-  const hasDiarrhea = text.includes('설사')
+  const hasVomit = ['구토', '토했', '토를', '토하', '토해'].some(kw => includesLiveKeyword(text, kw))
+  const hasDiarrhea = includesLiveKeyword(text, '설사')
   if (hasVomit && hasDiarrhea) {
     return `${name}이(가) 구토와 설사를 동시에 하고 있군요. 두 증상이 함께 있으면 탈수가 빠르게 올 수 있어서 꼼꼼히 확인해볼게요.`
   }
 
   for (const { keywords, opener } of COMPLAINT_OPENERS) {
-    if (keywords.some(kw => text.includes(kw))) return opener(name)
+    if (keywords.some(kw => includesLiveKeyword(text, kw))) return opener(name)
   }
   return `${name}이(가) 그런 증상을 보이면 많이 걱정되셨겠어요. 상태를 자세히 파악할 수 있게 몇 가지 여쭤볼게요.`
 }
@@ -2893,7 +2928,7 @@ const CHIEF_COMPLAINT_FIRST: Array<{ keywords: string[]; priorityId: string }> =
 
 export function reorderByChiefComplaint(text: string, questions: Question[]): Question[] {
   for (const { keywords, priorityId } of CHIEF_COMPLAINT_FIRST) {
-    if (keywords.some(kw => text.includes(kw))) {
+    if (keywords.some(kw => includesLiveKeyword(text, kw))) {
       const idx = questions.findIndex(q => q.id === priorityId)
       if (idx > 0) {
         const reordered = [...questions]

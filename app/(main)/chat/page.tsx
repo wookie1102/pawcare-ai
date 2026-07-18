@@ -209,7 +209,7 @@ export default function ChatPage() {
         setTimeout(() => {
           addAiMessage('분석이 끝났어요. 결과를 알려드릴게요.')
           setTimeout(() => {
-            const msg = makeBehaviorResultMessage(behaviorType, profile?.name || '반려동물')
+            const msg = makeBehaviorResultMessage(behaviorType, profile?.name || '반려동물', questions, newAnswers)
             addAiMessage(msg, { isResult: true, urgency: 'watch' })
             setStep('result')
           }, 400)
