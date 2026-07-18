@@ -32,8 +32,33 @@ const EMERGENCY_KW = [
   '혹이 터졌', '눈이 빠져',
 ]
 
+// detectEmergency는 첫 증상 설명 문장만 보고 질문 없이 곧장 응급으로 보내는
+// 유일한 경로라, 부정문("파랗지는 않아요")이나 "이미 지나간 일" 표현
+// ("쓰러질 뻔했는데 지금은 괜찮아요")까지 그대로 매칭되면 위험 신호가 없다고
+// 안심시키려 쓴 문장에도 응급 배너가 떠 버린다. 키워드 주변의 부정/해소 표현을
+// 함께 확인해서 이런 오탐을 걸러낸다.
+const NEGATION_NEAR_KEYWORD = /지\s*않|진\s*않|지는\s*않|은\s*아니|는\s*아니|이\s*아니|가\s*아니|건\s*아니|게\s*아니|지\s*마|은\s*없|는\s*없|도\s*없|뻔했|뻔함/
+const CURRENTLY_RESOLVED = /지금은?\s*(괜찮|멀쩡|정상)/
+
+function isNegatedMatch(text: string, index: number, kwLen: number): boolean {
+  const after = text.slice(index + kwLen, index + kwLen + 12)
+  const before = text.slice(Math.max(0, index - 6), index)
+  return NEGATION_NEAR_KEYWORD.test(after) || /안\s*$/.test(before)
+}
+
+function includesLiveKeyword(text: string, kw: string): boolean {
+  let from = 0
+  while (true) {
+    const idx = text.indexOf(kw, from)
+    if (idx === -1) return false
+    if (!isNegatedMatch(text, idx, kw.length)) return true
+    from = idx + kw.length
+  }
+}
+
 export function detectEmergency(text: string): boolean {
-  return EMERGENCY_KW.some(kw => text.includes(kw))
+  if (CURRENTLY_RESOLVED.test(text)) return false
+  return EMERGENCY_KW.some(kw => includesLiveKeyword(text, kw))
 }
 
 export function detectSystems(text: string): QuestionSystem[] {
@@ -1349,6 +1374,13 @@ export function makeResultMessage(
     emergLines.push('• 조용하고 따뜻하게 유지해주세요')
     emergLines.push('• 억지로 먹이거나 마시게 하지 마세요')
     emergLines.push('• 전화로 미리 병원에 도착 시간을 알려주세요')
+
+    const emergConditions = buildPossibleConditions(systems, questions, answers)
+    if (emergConditions.length) {
+      emergLines.push('', '[참고: 고려해볼 수 있는 질환]')
+      emergLines.push('※ 진단이 아니라 답변 내용을 바탕으로 한 참고 정보예요. 확진은 병원 검사로만 가능해요.')
+      emergLines.push(...emergConditions.map(c => `• ${c}`))
+    }
     return emergLines.join('\n')
   }
 
@@ -1387,6 +1419,14 @@ export function makeResultMessage(
   lines.push('[즉시 응급실로 가야 할 증상]')
   lines.push(...buildRedFlags(systems))
 
+  // ── 참고: 고려해볼 수 있는 질환 ───────────────────
+  const possibleConditions = buildPossibleConditions(systems, questions, answers)
+  if (possibleConditions.length) {
+    lines.push('', '[참고: 고려해볼 수 있는 질환]')
+    lines.push('※ 진단이 아니라 답변 내용을 바탕으로 한 참고 정보예요. 확진은 병원 검사로만 가능해요.')
+    lines.push(...possibleConditions.map(c => `• ${c}`))
+  }
+
   return lines.join('\n')
 }
 
@@ -1406,13 +1446,14 @@ function buildClinicalNote(
     const stool = ans['dige_stool']
     const stoolColor = ans['dige_stool_color']
     const cause = ans['dige_cause']
+    const foreign = ans['dige_foreign']
     const eat = ans['dige_eat']
     const onset = ans['dige_onset']
     const vitality = ans['dige_vitality']
     const fever = ans['dige_fever']
 
     // 구토 패턴 분석
-    if (vomitTiming === '빈속에(공복에) 토해요') {
+    if (vomitTiming === '빈속에 토해요') {
       lines.push('• 공복 구토: 담즙역류 또는 위산 자극이 원인일 가능성이 높아요. 식사 간격을 줄여보세요.')
     } else if (vomitTiming === '밥 먹은 직후 바로 토해요') {
       lines.push('• 식후 즉시 구토: 과식, 급하게 먹음, 또는 위장 자극 가능성이에요. 소량씩 자주 급여해 보세요.')
@@ -1475,7 +1516,7 @@ function buildClinicalNote(
       lines.push('• 만성 구토 + 무기력/식욕부진: 임상 사례 원칙 — "만성 구토는 기저 질환(신부전, 심부전, 종양)의 신호일 수 있어요. 단순 위장약으로 덮기 전에 기저 원인 검사가 우선이에요."')
     }
 
-    if (cause === '뭔가를 삼켰을 수 있어요') {
+    if (foreign === '삼킨 것 같아요' || foreign === '뭔가 이상한 걸 먹었어요') {
       lines.push('• 이물 섭취 가능성: 방사선 촬영으로 이물 위치 및 장 폐색 여부 확인이 필요해요.')
     }
     if (freq === '하루 3~5회' && (eat === '거의 안 먹어요' || eat === '아무것도 안 먹어요')) {
@@ -1578,7 +1619,7 @@ function buildClinicalNote(
     const first = ans['neuro_first']
     const meds = ans['neuro_meds']
 
-    if (type === '한쪽으로 기울거나 빙빙 돌아요 (전정)') {
+    if (type === '한쪽으로 기울거나 빙빙 돌아요') {
       lines.push('• 전정 증상 (머리 기울기, 안구진탕, 빙빙 돌기): 말초성(내이 문제) 또는 중추성(뇌 문제) 전정 질환 감별이 필요해요.')
       lines.push('  → 안구진탕 방향이 빠른 면: 말초성이면 1~2주 내 자연 개선 가능, 중추성이면 MRI 필요.')
       lines.push('• 임상 사례 원칙 — 머리 기울어짐 검사 순서:')
@@ -1618,7 +1659,7 @@ function buildClinicalNote(
     if (leg === '뒷다리 한쪽' && onset === '서서히 심해졌어요') {
       lines.push('• 뒷다리 점진적 파행: 슬개골 탈구(소형견 특히 많음) 또는 고관절 이형성 가능성이에요. 방사선으로 단계 확인이 먼저예요.')
     }
-    if (leg === '다리보다 허리·등이 문제인 것 같아요') {
+    if (leg === '허리·등이 문제인 것 같아요') {
       lines.push('• 허리·척추 통증: 추간판 질환(IVDD) 가능성이에요. 디스크가 탈출 상태인지 파열 상태인지에 따라 치료 방향이 달라요.')
       lines.push('  → 경미한 탈출: 스테로이드 + 절대 안정으로 호전 가능')
       lines.push('  → 마비 동반 파열: MRI + 수술 여부 판단이 필요 (빠를수록 예후 좋음)')
@@ -1639,7 +1680,7 @@ function buildClinicalNote(
     if (pain === '많이 아파해요') {
       lines.push('• 심한 통증: 진통제 없이 견디는 것은 동물도 매우 힘들어요. 통증 관리를 먼저 시작하는 게 회복에 도움이 돼요.')
     }
-    if (onset === '다쳤어요 (낙하·사고)') {
+    if (onset === '사고나 낙하 후 시작됐어요') {
       lines.push('• 외상: 골절 및 인대 파열 여부를 방사선으로 즉시 확인해야 해요. 내부 출혈 가능성도 배제가 필요해요.')
     }
 
@@ -1695,6 +1736,7 @@ function buildClinicalNote(
     const appetite = ans['endo_appetite']
     const urine = ans['endo_urine']
     const other = ans['endo_other']
+    const belly = ans['endo_belly']
 
     if (symptom === '물을 엄청 많이 마셔요') {
       lines.push('• 다음다뇨(물 많이 마심): 3가지 주요 감별 진단이 필요해요:')
@@ -1714,7 +1756,7 @@ function buildClinicalNote(
     if (weightPeriod === '1~2주 안에 눈에 띄게') {
       lines.push('• 급격한 체중 감소: 심각한 내과 질환(당뇨, 종양, 신부전 등)의 신호 — 오늘~내일 진료 필요.')
     }
-    if (other === '복부가 팽창했어요') {
+    if (belly === '많이 볼록해요' || belly === '조금 팽창한 것 같아요') {
       lines.push('• 복부 팽창: 쿠싱 또는 복강 내 액체 축적 가능성 — 초음파 검사 권장.')
     }
 
@@ -1743,7 +1785,7 @@ function buildClinicalNote(
     const eat = ans['dental_eat']
     const gumColor = ans['dental_gum_color']
     const mouthOpen = ans['dental_mouth_open']
-    const duration = ans['dental_duration']
+    const xray = ans['dental_xray']
     const systemic = ans['dental_systemic']
 
     if (look === '이빨이 흔들려요') {
@@ -1755,7 +1797,7 @@ function buildClinicalNote(
     if (mouthOpen === '턱 아래나 뺨이 부어있어요') {
       lines.push('• 턱·뺨 부종: 치근 주위 농양 가능성 — 치과 방사선 촬영으로 확인 필요.')
     }
-    if (duration === '무마취 스케일링만 받았어요') {
+    if (xray === '무마취 스케일링만 받았어요') {
       lines.push('• 무마취 스케일링: 치아 표면만 청소하며 잇몸 아래 치주 병변은 확인·치료가 불가능해요. 전신마취 하의 정식 치과 처치가 필요해요.')
     }
     if (eat === '밥 먹기 힘들어해요' || eat === '한쪽으로만 씹어요') {
@@ -1789,7 +1831,14 @@ function buildClinicalNote(
     if (smell === '고름 냄새가 나요') {
       lines.push('• 농성 분비물: 농피증(세균성 피부 감염) 가능성 — 항생제 치료가 필요해요. 세균 배양·감수성 검사를 권장해요.')
     }
-    if (look === '오래됐는데 점점 심해져요' || onset === '오래됐는데 점점 심해져요') {
+    if (look === '빨갛게 부어있어요') {
+      lines.push('• 급성 발적·부종: 급성 습성 피부염(핫스팟) 또는 알레르기 반응 초기 소견일 수 있어요.')
+    } else if (look === '털이 빠지거나 벗겨져요') {
+      lines.push('• 탈모 부위: 진균(링웜), 옴진드기, 또는 내분비 질환(갑상선·쿠싱) 감별이 필요해요. 피부 스크래핑 검사를 권장해요.')
+    } else if (look === '딱지나 상처가 생겼어요') {
+      lines.push('• 딱지·상처: 자가 손상(긁음)에 의한 2차 세균 감염 가능성이 있어요.')
+    }
+    if (onset === '오래됐는데 점점 심해져요') {
       lines.push('• 만성 진행성 피부 질환: 알레르기, 세균, 곰팡이, 면역 이상이 복합적으로 섞인 경우가 많아요. 복합 검사가 필요해요.')
     }
   }
@@ -1811,7 +1860,7 @@ function buildClinicalNote(
     if (discharge === '노랗거나 초록색이에요') {
       lines.push('• 농성 분비물: 세균성 결막염 또는 각막 궤양 가능성 — 항생제 안약이 필요해요. 각막 형광 검사(플루오레신)로 궤양 유무 확인이 필요해요.')
     }
-    if (behave === '계속 감고 있어요') {
+    if (behave === '눈을 잘 못 떠요 (계속 감아요)') {
       lines.push('• 눈 찡그리기(안검경련): 각막 자극, 각막 궤양, 또는 안압 상승의 통증 신호예요. 오늘 중 진료를 받으세요.')
     }
     if (pain === '많이 아파해요 (피해요)') {
@@ -2001,7 +2050,7 @@ function buildRecommendation(
     const look = ans['eye_look']
     const pain = ans['eye_pain']
     const behave = ans['eye_behave']
-    if (look === '눈이 부어있거나 돌출됐어요' || pain === '많이 아파해요 (피해요)' || behave === '계속 감고 있어요') {
+    if (look === '눈이 부어있거나 돌출됐어요' || pain === '많이 아파해요 (피해요)' || behave === '눈을 잘 못 떠요 (계속 감아요)') {
       lines.push('▶ 안구 돌출·통증·눈 찡그리기는 응급 소견이에요. 오늘 중 진료를 받으세요.')
     }
     lines.push('▶ 눈 주변을 면봉이나 생리식염수에 적신 거즈로 부드럽게 닦아주세요 (문지르지 않기).')
@@ -2055,7 +2104,7 @@ function buildVetInfo(
     info.push('구토 횟수 + 구토물 색깔/양 (기록하거나 사진 찍어두세요)')
     info.push('설사 횟수 + 변 색깔 (갈색/검은색/혈변)')
     info.push('마지막으로 먹은 것과 시간')
-    if (ans['dige_cause'] === '뭔가를 삼켰을 수 있어요') info.push('삼켰을 가능성이 있는 물건 종류')
+    if (ans['dige_foreign'] === '삼킨 것 같아요' || ans['dige_foreign'] === '뭔가 이상한 걸 먹었어요') info.push('삼켰을 가능성이 있는 물건 종류')
     tests.push('복부 신체검사')
     tests.push('혈액검사 (염증 수치 CRP, 췌장 수치 CPL·리파아제, 신장·간 기능, 백혈구)')
     tests.push('복부 초음파 (췌장 크기·밀도 확인 — 하얗게 보이면 췌장염 시사)')
@@ -2097,7 +2146,7 @@ function buildVetInfo(
     info.push('어느 다리·어느 상황에서 심해지는지 메모')
     info.push('현재 복용 중인 진통제·관절 보충제 이름')
     tests.push('방사선 촬영 (골절·관절·척추 이상 확인) — 정형외과의 기본 검사')
-    if (ans['ortho_onset'] === '갑자기 못 쓰게 됐어요' || ans['ortho_leg'] === '다리보다 허리·등이 문제인 것 같아요') {
+    if (ans['ortho_onset'] === '갑자기 못 쓰게 됐어요' || ans['ortho_leg'] === '허리·등이 문제인 것 같아요') {
       tests.push('척추 디스크 의심 시: MRI 또는 CT 촬영 (방사선만으로는 연부 조직 확인 불가)')
     }
     if (ans['ortho_when'] === '아침에 일어날 때 심해요' || ans['ortho_when'] === '운동·산책 후 심해요') {
@@ -2202,6 +2251,137 @@ function buildVetInfo(
   if (tests.length) lines.push('• 예상 검사: ' + tests.join(' / '))
 
   return lines
+}
+
+// 진단이 아니라 참고용 — 답변 패턴을 근거로 병원에서 감별해볼 만한 질환명을 모아 보여준다.
+function buildPossibleConditions(
+  systems: QuestionSystem[],
+  questions?: Question[],
+  answers?: Record<string, string>,
+): string[] {
+  const ans = answers ?? {}
+  const conditions: string[] = []
+  const add = (c: string) => { if (!conditions.includes(c)) conditions.push(c) }
+
+  if (systems.includes('digestive')) {
+    const freq = ans['dige_freq']
+    const blood = ans['dige_blood']
+    const stoolColor = ans['dige_stool_color']
+    const stool = ans['dige_stool']
+    const onset = ans['dige_onset']
+    const eat = ans['dige_eat']
+    const vitality = ans['dige_vitality']
+    const fever = ans['dige_fever']
+    const abdomen = ans['dige_abdomen']
+    const foreign = ans['dige_foreign']
+    const vomitType = ans['dige_vomit_type']
+
+    if (blood === '구토에 피가 보여요' || stoolColor === '검은색이에요 (타르 같아요)') add('상부 소화관 출혈')
+    if (blood === '대변에 피가 섞여요' || stoolColor === '선홍색 피가 섞여요') add('하부 소화관 출혈')
+    if (abdomen === '많이 아파해요' || stoolColor === '노랗거나 회색이에요') add('췌장염')
+    if (onset === '1주일 이상이에요' && stool !== '정상이에요') add('염증성 장질환(IBD)')
+    if (foreign === '삼킨 것 같아요' || foreign === '뭔가 이상한 걸 먹었어요') add('이물 섭취(장폐색 위험)')
+    if (fever === '뜨겁게 느껴져요') add('감염성 장염(파보바이러스 등)')
+    if (vomitType === '노랗거나 거품 같아요 (담즙)') add('담즙 역류성 위염')
+    if (freq === '하루 3~5회' || freq === '하루 6회 이상') add('급성 위장염')
+    if (abdomen === '배가 빵빵하게 부풀어 있어요') add('위확장·염전(GDV)')
+    if (onset === '1주일 이상이에요' && (vitality === '많이 축 처지고 무기력해요' || eat === '거의 안 먹어요')) {
+      add('신부전·심부전·종양 등 기저 질환')
+    }
+    if (ans['liver_jaundice'] === '네, 노랗게 보여요' || ans['liver_jaundice'] === '약간 그런 것 같아요') add('간 질환(황달)')
+  }
+
+  if (systems.includes('respiratory')) {
+    const gum = ans['resp_gum']
+    const sleepRate = ans['resp_sleep_rate']
+    const heartHx = ans['resp_heart_hx']
+    const coughType = ans['resp_cough_type']
+
+    if (gum === '창백하거나 흰색이에요') add('빈혈 또는 순환 장애')
+    if (sleepRate === '40회 이상이에요' || (heartHx !== '없어요' && heartHx !== '모르겠어요' && sleepRate === '30~40회 정도예요')) {
+      add('폐수종·흉수(심부전 관련)')
+    }
+    if (coughType === '기침 후 구토해요' || coughType === '마른 기침이에요') add('기관지 협착(기관 허탈)')
+    if (coughType === '가래가 끓는 듯한 기침이에요') add('폐렴·하부 기도 감염')
+  }
+
+  if (systems.includes('urinary')) {
+    const output = ans['uri_output']
+    const color = ans['uri_color']
+    const drink = ans['uri_drink']
+    const kidneyHx = ans['uri_kidney_hx']
+
+    if (output === '소변을 아예 못 봐요') add('요로 폐색(응급)')
+    if (color === '빨갛거나 분홍색이에요') add('방광염·요로결석')
+    if (color === '갈색이나 진한 색이에요') add('근육 손상 또는 용혈성 빈혈')
+    if (output === '소변량이 많이 줄었어요' || kidneyHx === '신부전 진단받고 관리 중이에요') add('신장 기능 저하(신부전)')
+    if (drink === '평소보다 훨씬 많이 마셔요') add('당뇨·쿠싱증후군·신부전(다음다뇨 감별 필요)')
+  }
+
+  if (systems.includes('neurological')) {
+    const type = ans['neuro_type']
+    const duration = ans['neuro_duration']
+    if (type === '한쪽으로 기울거나 빙빙 돌아요') add('전정 질환(말초성/중추성 감별 필요)')
+    if (type === '전신 경련·발작이에요') add('특발성 간질 또는 증상성 발작')
+    if (duration === '계속 반복돼요') add('군발 발작(응급)')
+  }
+
+  if (systems.includes('orthopedic')) {
+    const leg = ans['ortho_leg']
+    const onset = ans['ortho_onset']
+    const when = ans['ortho_when']
+    if (leg === '뒷다리 한쪽' && onset === '서서히 심해졌어요') add('슬개골 탈구 또는 고관절 이형성')
+    if (leg === '허리·등이 문제인 것 같아요' || onset === '갑자기 못 쓰게 됐어요') add('추간판 질환(IVDD)')
+    if (when === '아침에 일어날 때 심해요') add('퇴행성 관절염(골관절염)')
+  }
+
+  if (systems.includes('lump')) {
+    const where = ans['lump_where']
+    const feel = ans['lump_feel']
+    if (where === '유선 주변 (젖꼭지 근처)') add('유선종양')
+    if (feel === '딱딱하고 고정돼 있어요' || feel === '빠르게 커지고 있어요') add('악성 종양(비만세포종·육종 등)')
+    if (feel === '말랑하고 잘 움직여요') add('지방종·낭종')
+    if (where === '몸 안쪽인 것 같아요') add('내부 장기 종양(비장 등)')
+  }
+
+  if (systems.includes('endocrine')) {
+    const symptom = ans['endo_symptom']
+    if (symptom === '물을 엄청 많이 마셔요' || symptom === '배만 볼록하게 나왔어요') add('쿠싱증후군')
+    if (symptom === '물을 엄청 많이 마셔요') add('당뇨')
+    if (symptom === '털이 많이 빠지고 피부가 변했어요') add('갑상선기능저하증')
+    if (ans['thyroid_cat'] === '네, 심해졌어요') add('갑상선기능항진증')
+  }
+
+  if (systems.includes('dental')) {
+    const look = ans['dental_look']
+    const mouthOpen = ans['dental_mouth_open']
+    if (look === '이빨이 흔들려요' || look === '잇몸이 붓거나 빨개요' || look === '치석이 많이 쌓였어요') add('치주 질환')
+    if (mouthOpen === '턱 아래나 뺨이 부어있어요' || mouthOpen === '코나 눈 아래가 부어있어요') add('치근 농양')
+  }
+
+  if (systems.includes('skin')) {
+    const onset = ans['skin_onset']
+    const smell = ans['skin_smell']
+    if (onset === '새 간식·사료 바꾼 뒤 시작됐어요') add('식이 알레르기')
+    if (onset === '특정 계절에만 심해요') add('계절성 알레르기(아토피)')
+    if (smell === '고름 냄새가 나요') add('농피증(세균성 피부 감염)')
+  }
+
+  if (systems.includes('eye')) {
+    const look = ans['eye_look']
+    const discharge = ans['eye_discharge']
+    if (look === '눈이 부어있거나 돌출됐어요') add('녹내장 또는 안와 종괴')
+    if (look === '눈이 뿌옇게 변했어요') add('백내장 또는 포도막염')
+    if (discharge === '노랗거나 초록색이에요') add('세균성 결막염·각막 궤양')
+  }
+
+  if (systems.includes('ear')) {
+    const inside = ans['ear_inside']
+    if (inside === '노랗거나 고름 같은 분비물') add('세균성 외이염·중이염')
+    if (inside === '까맣거나 갈색 분비물') add('말라세치아(효모균) 외이염')
+  }
+
+  return conditions
 }
 
 function buildRedFlags(systems: QuestionSystem[]): string[] {
