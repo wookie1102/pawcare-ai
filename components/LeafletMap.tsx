@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import type { Map as LeafletMapInstance, Marker as LeafletMarker } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 type Hospital = {
@@ -21,8 +22,8 @@ type Props = {
 
 export default function LeafletMap({ lat, lng, hospitals }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<any>(null)
-  const markersRef = useRef<any[]>([])
+  const mapRef = useRef<LeafletMapInstance | null>(null)
+  const markersRef = useRef<LeafletMarker[]>([])
 
   // 지도 초기화
   useEffect(() => {
@@ -57,6 +58,9 @@ export default function LeafletMap({ lat, lng, hospitals }: Props) {
     if (!mapRef.current || hospitals.length === 0) return
 
     import('leaflet').then(L => {
+      const map = mapRef.current
+      if (!map) return
+
       // 기존 마커 제거
       markersRef.current.forEach(m => m.remove())
       markersRef.current = []
@@ -70,7 +74,7 @@ export default function LeafletMap({ lat, lng, hospitals }: Props) {
 
       hospitals.forEach(h => {
         const marker = L.marker([Number(h.y), Number(h.x)], { icon: hospitalIcon })
-          .addTo(mapRef.current)
+          .addTo(map)
           .bindPopup(
             `<b style="font-size:13px">${h.place_name}</b><br>` +
             `<span style="font-size:11px;color:#555">${h.road_address_name || h.address_name}</span>` +
