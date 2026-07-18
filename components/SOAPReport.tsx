@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Copy, Check } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { X, Copy, Check, Download, Share2 } from 'lucide-react'
 import type { PetProfile } from '@/lib/storage'
 import type { QuestionSystem, UrgencyLevel, Question } from '@/lib/chatLogic'
 
@@ -44,6 +44,9 @@ const PLAN: Record<UrgencyLevel, string> = {
 
 export default function SOAPReport({ onClose, symptomText, profile, urgency, systems, questions, answers }: Props) {
   const [copied, setCopied] = useState(false)
+  const [imageBusy, setImageBusy] = useState<'save' | 'share' | null>(null)
+  const [actionError, setActionError] = useState('')
+  const captureRef = useRef<HTMLDivElement>(null)
 
   const now = new Date()
   const dateStr = now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -100,6 +103,70 @@ export default function SOAPReport({ onClose, symptomText, profile, urgency, sys
     })
   }
 
+  async function captureReportImage(): Promise<Blob | null> {
+    if (!captureRef.current) return null
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(captureRef.current, {
+      backgroundColor: '#ffffff',
+      scale: 2, // 사진으로 저장/공유했을 때 글씨가 뭉개지지 않도록 고해상도로 캡처
+    })
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+  }
+
+  async function saveAsImage() {
+    setActionError('')
+    setImageBusy('save')
+    try {
+      const blob = await captureReportImage()
+      if (!blob) throw new Error('capture failed')
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `pawcare-soap-${profile?.name || '반려동물'}-${now.toISOString().split('T')[0]}.png`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      setActionError('이미지 저장에 실패했어요. 다시 시도해주세요.')
+    } finally {
+      setImageBusy(null)
+    }
+  }
+
+  async function shareReport() {
+    setActionError('')
+    setImageBusy('share')
+    try {
+      const blob = await captureReportImage()
+      const fileName = `pawcare-soap-${now.toISOString().split('T')[0]}.png`
+      const file = blob ? new File([blob], fileName, { type: 'image/png' }) : null
+
+      if (file && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'PawCare AI SOAP 리포트',
+          text: `${profile?.name || '반려동물'}의 상담 리포트예요.`,
+        })
+      } else if (navigator.share) {
+        // 파일 공유를 지원하지 않는 브라우저: 텍스트로라도 공유
+        await navigator.share({ title: 'PawCare AI SOAP 리포트', text: reportText })
+      } else {
+        // Web Share API 자체가 없는 환경(주로 데스크톱): 클립보드 복사로 대체
+        await navigator.clipboard.writeText(reportText)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }
+    } catch (err) {
+      // 사용자가 공유 시트를 취소한 경우(AbortError)는 에러로 취급하지 않는다
+      if (err instanceof Error && err.name !== 'AbortError') {
+        setActionError('공유에 실패했어요. 다시 시도해주세요.')
+      }
+    } finally {
+      setImageBusy(null)
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl flex flex-col" style={{ maxHeight: '85vh' }}>
@@ -116,6 +183,7 @@ export default function SOAPReport({ onClose, symptomText, profile, urgency, sys
 
         {/* 내용 */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div ref={captureRef} className="space-y-4 bg-white">
           {/* S */}
           <section>
             <div className="flex items-center gap-2 mb-2">
@@ -204,14 +272,34 @@ export default function SOAPReport({ onClose, symptomText, profile, urgency, sys
             생성일시: {dateStr}
           </p>
         </div>
+        </div>
 
-        {/* 복사 버튼 */}
-        <div className="px-5 pb-6 pt-2 border-t border-gray-100 flex-shrink-0">
+        {/* 액션 버튼 */}
+        <div className="px-5 pb-6 pt-2 border-t border-gray-100 flex-shrink-0 space-y-2">
+          {actionError && <p className="text-xs text-red-500 text-center">{actionError}</p>}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={saveAsImage}
+              disabled={imageBusy !== null}
+              className="flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 font-semibold py-3 rounded-xl transition-colors text-sm"
+            >
+              <Download size={15} />
+              {imageBusy === 'save' ? '저장 중...' : '이미지로 저장'}
+            </button>
+            <button
+              onClick={shareReport}
+              disabled={imageBusy !== null}
+              className="flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 font-semibold py-3 rounded-xl transition-colors text-sm"
+            >
+              <Share2 size={15} />
+              {imageBusy === 'share' ? '공유 중...' : '공유하기'}
+            </button>
+          </div>
           <button
             onClick={copyToClipboard}
             className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3.5 rounded-xl transition-colors text-sm"
           >
-            {copied ? <><Check size={16} /> 복사됐어요!</> : <><Copy size={16} /> 클립보드에 복사</>}
+            {copied ? <><Check size={16} /> 복사됐어요!</> : <><Copy size={16} /> 클립보드에 텍스트로 복사</>}
           </button>
         </div>
       </div>
