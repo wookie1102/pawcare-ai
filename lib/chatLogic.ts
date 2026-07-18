@@ -1083,8 +1083,11 @@ export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfil
   const primary = sorted[0]
 
   for (const sys of sorted) {
-    // 주 증상은 최대 10개, 부가 증상은 최대 4개 (중복 방지)
-    const limit = sys === primary ? 10 : 4
+    // 주 증상은 최대 15개(가장 질문이 많은 digestive 기준), 부가 증상은 최대 4개 (중복 방지).
+    // 예전엔 주 증상도 10개로 잘라서 digestive(15개)·urinary(12개)의 뒷부분 질문
+    // (dige_fever, dige_weight, uri_vitality 등)이 구조적으로 절대 안 나왔는데,
+    // EMERGENCY_REASONS나 임상 소견 로직은 여전히 그 답변을 참조하고 있어서 조용히 죽은 코드가 됐었다.
+    const limit = sys === primary ? 15 : 4
     for (const q of QUESTION_BANKS[sys].slice(0, limit)) {
       if (!seen.has(q.id)) { seen.add(q.id); questions.push(q) }
     }
@@ -1095,6 +1098,8 @@ export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfil
     gen_duration: /_(onset|duration|when)$/,
     gen_vitality: /_vitality$/,
     gen_eat: /_eat$/,
+    gen_weight: /_weight$/,
+    gen_fever: /_fever$/,
   }
   let addedGeneral = 0
   for (const q of QUESTION_BANKS.general) {
@@ -1106,8 +1111,8 @@ export function buildQuestionQueue(systems: QuestionSystem[], profile: PetProfil
 
   // 구토 + 설사 동시: 탈수 체크 질문을 맨 앞에
   if (symptomText && systems.includes('digestive')) {
-    const hasVomit = ['구토', '토했', '토를', '토해'].some(kw => symptomText.includes(kw))
-    const hasDiarrhea = symptomText.includes('설사')
+    const hasVomit = ['구토', '토했', '토를', '토해'].some(kw => includesLiveKeyword(symptomText, kw))
+    const hasDiarrhea = includesLiveKeyword(symptomText, '설사')
     if (hasVomit && hasDiarrhea) {
       const extra = COMBINED_VOMIT_DIARRHEA_QUESTIONS.filter(q => !seen.has(q.id))
       questions.unshift(...extra)
@@ -1519,6 +1524,11 @@ function buildClinicalNote(
     if (foreign === '삼킨 것 같아요' || foreign === '뭔가 이상한 걸 먹었어요') {
       lines.push('• 이물 섭취 가능성: 방사선 촬영으로 이물 위치 및 장 폐색 여부 확인이 필요해요.')
     }
+    if (cause === '새로운 음식이나 간식을 줬어요') {
+      lines.push('• 최근 식이 변화: 새 사료·간식이 소화기 자극의 원인일 수 있어요. 해당 음식을 중단하고 반응을 지켜보세요.')
+    } else if (cause === '스트레스 상황이 있었어요') {
+      lines.push('• 최근 스트레스 상황: 스트레스성 위장 증상(과민성 장) 가능성이 있어요. 환경을 안정시켜주세요.')
+    }
     if (freq === '하루 3~5회' && (eat === '거의 안 먹어요' || eat === '아무것도 안 먹어요')) {
       lines.push('• 잦은 구토/설사 + 식욕 저하: 급성 위장염 가능성이 높아요.')
     }
@@ -1576,6 +1586,11 @@ function buildClinicalNote(
     if (effort === '배까지 움직이며 숨 쉬어요' && heartHx === '네, 심장약 복용 중이에요') {
       lines.push('• 심장약 복용 중 심한 호흡 곤란: 약물로 교정이 안 되는 D단계 진행 가능성이 있어요. 용량 조정 또는 추가 처치가 필요해요.')
     }
+    if (nasal === '코피가 났어요') {
+      lines.push('• 코피 동반: 응고 장애, 고혈압, 또는 코 안쪽 종양·이물 가능성이 있어요. 혈액검사(혈소판, 응고 수치)가 필요해요.')
+    } else if (nasal === '노랗거나 탁한 콧물이에요') {
+      lines.push('• 화농성 콧물: 세균성 부비동염 또는 치아 뿌리 감염이 코로 퍼진 경우일 수 있어요.')
+    }
   }
 
   if (systems.includes('urinary')) {
@@ -1617,7 +1632,7 @@ function buildClinicalNote(
     const duration = ans['neuro_duration']
     const after = ans['neuro_after']
     const first = ans['neuro_first']
-    const meds = ans['neuro_meds']
+    const meds = ans['neuro_epilepsy_hx']
 
     if (type === '한쪽으로 기울거나 빙빙 돌아요') {
       lines.push('• 전정 증상 (머리 기울기, 안구진탕, 빙빙 돌기): 말초성(내이 문제) 또는 중추성(뇌 문제) 전정 질환 감별이 필요해요.')
@@ -1641,7 +1656,7 @@ function buildClinicalNote(
     if (first === '점점 잦아지고 있어요') {
       lines.push('• 발작 빈도 증가: 항경련제 용량 조정 또는 기저 질환 악화 가능성 — 신경과 전문의 상담 필요.')
     }
-    if (meds === '항경련제 복용 중이에요') {
+    if (meds === '네, 항경련제 복용 중이에요') {
       lines.push('• 항경련제 복용 중 발작 재발: 약 용량 조정 또는 약 변경이 필요할 수 있어요. 현재 약 이름과 용량을 병원에 알려주세요.')
     }
     lines.push('• 발작 동영상이 있다면 반드시 병원에 보여주세요 — 발작 유형 분류에 매우 중요한 자료예요.')
@@ -1759,6 +1774,16 @@ function buildClinicalNote(
     if (belly === '많이 볼록해요' || belly === '조금 팽창한 것 같아요') {
       lines.push('• 복부 팽창: 쿠싱 또는 복강 내 액체 축적 가능성 — 초음파 검사 권장.')
     }
+    if (urine === '소변 색이 이상해요') {
+      lines.push('• 소변 색 변화: 당뇨·신장 질환 동반 시 요로 감염 위험이 높아져요. 소변 검사를 함께 받아보세요.')
+    }
+    if (other === '털이 대칭으로 빠져요') {
+      lines.push('• 좌우 대칭 탈모: 내분비 질환(갑상선기능저하증, 쿠싱)에서 특징적으로 나타나는 패턴이에요.')
+    } else if (other === '피부가 얇아지거나 멍이 잘 들어요') {
+      lines.push('• 피부가 얇아지고 멍이 잘 듦: 쿠싱 증후군의 전형적 피부 소견이에요.')
+    } else if (other === '색소 침착이 생겼어요') {
+      lines.push('• 색소 침착: 내분비 질환에서 동반될 수 있는 피부 변화예요.')
+    }
 
     const cushingMed = ans['cushing_med']
     if (cushingMed === '최근에 중단했어요' || cushingMed === '최근에 복용을 시작했어요 (2주 이내)') {
@@ -1790,6 +1815,11 @@ function buildClinicalNote(
 
     if (look === '이빨이 흔들려요') {
       lines.push('• 동요치(흔들리는 이빨): 치주 질환 말기 또는 외상 — 발치가 필요한 경우가 많아요.')
+    }
+    if (gumColor === '빨갛거나 진한 빨강이에요') {
+      lines.push('• 잇몸 발적: 치은염·치주염의 초기 신호예요. 스케일링 및 치주 치료가 필요할 수 있어요.')
+    } else if (gumColor === '하얗거나 창백해요') {
+      lines.push('• 잇몸 창백: 빈혈이나 순환 장애 가능성 — 구강 문제 외의 전신 상태도 함께 확인이 필요해요.')
     }
     if (mouthOpen === '코나 눈 아래가 부어있어요') {
       lines.push('• 얼굴 부종(코·눈 아래): 치근 농양이 주변으로 퍼진 가능성 — 즉시 진료 필요. 항생제 + 발치 치료가 필요해요.')
@@ -2027,10 +2057,23 @@ function buildRecommendation(
   if (systems.includes('neurological')) {
     const type = ans['neuro_type']
     const duration = ans['neuro_duration']
-    lines.push('▶ 발작이 일어나는 동안: 억지로 잡거나 입안에 손을 넣지 마세요. 주변 위험물만 치워주세요.')
-    lines.push('▶ 발작이 5분 이상 지속되면 즉시 응급 병원으로 이동하세요.')
-    lines.push('▶ 다음 발작 시 스마트폰으로 영상 촬영 — 병원 진단에 매우 중요해요.')
-    if (ans['neuro_meds'] === '항경련제 복용 중이에요') {
+    if (type === '한쪽으로 기울거나 빙빙 돌아요') {
+      lines.push('▶ 걷다가 넘어지거나 부딪히지 않도록 주변 위험물을 치우고, 억지로 걷게 하지 마세요.')
+      lines.push('▶ 눈이 흔들리는 방향(안구진탕)을 스마트폰으로 촬영해두면 진단에 도움이 돼요.')
+    } else if (type === '비틀거리거나 걷기 어려워요') {
+      lines.push('▶ 계단·높은 곳에서 떨어지지 않도록 주의하고, 이동이 필요하면 안아서 옮겨주세요.')
+    } else if (type === '의식을 잃었어요') {
+      lines.push('▶ 잇몸 색깔과 호흡 상태를 확인하고, 의식이 돌아올 때까지 옆으로 눕혀 기도를 확보해주세요.')
+      lines.push('▶ 의식을 잃은 시간을 기록해두면 진단에 중요한 정보가 돼요.')
+    } else {
+      lines.push('▶ 발작이 일어나는 동안: 억지로 잡거나 입안에 손을 넣지 마세요. 주변 위험물만 치워주세요.')
+      lines.push('▶ 발작이 5분 이상 지속되면 즉시 응급 병원으로 이동하세요.')
+    }
+    lines.push('▶ 다음 증상 발생 시 스마트폰으로 영상 촬영 — 병원 진단에 매우 중요해요.')
+    if (duration === '계속 반복돼요') {
+      lines.push('▶ 짧은 간격으로 반복되고 있다면 지체 없이 응급 병원으로 이동하세요.')
+    }
+    if (ans['neuro_epilepsy_hx'] === '네, 항경련제 복용 중이에요') {
       lines.push('▶ 항경련제는 임의로 중단하거나 용량을 변경하지 마세요.')
     }
   }
@@ -2176,7 +2219,7 @@ function buildVetInfo(
     info.push('발작 동영상 (스마트폰으로 촬영한 것)')
     info.push('발작 시작 시각, 지속 시간, 횟수')
     info.push('발작 직전 행동 (전조 증상)')
-    if (ans['neuro_meds'] === '항경련제 복용 중이에요') {
+    if (ans['neuro_epilepsy_hx'] === '네, 항경련제 복용 중이에요') {
       info.push('현재 복용 중인 항경련제 이름 + 용량')
     }
     tests.push('혈액검사 (혈당, 칼슘, 신장·간 기능 — 대사성 원인 배제)')
