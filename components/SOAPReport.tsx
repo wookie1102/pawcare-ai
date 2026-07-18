@@ -43,6 +43,40 @@ const PLAN: Record<UrgencyLevel, string> = {
   emergency: '즉각 응급 처치 및 입원 평가 필요. 산소 공급, 정맥 수액, 모니터링 준비 요망.',
 }
 
+const COLOR_PROPS = [
+  'color', 'backgroundColor',
+  'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor',
+] as const
+
+// html2canvas(1.4.1)는 oklch()/color-mix() 같은 최신 CSS 색상 함수를 파싱하지 못한다.
+// Tailwind v4는 기본 팔레트를 oklch로 정의하기 때문에, 이 앱의 모든 bg-*/text-* 유틸리티가
+// 캡처 시 깨지거나(검은 배경) 아예 실패할 수 있다. html2canvas가 캡처 직전에 복제한 문서
+// (onclone)를 순회하면서, 브라우저의 <canvas> 2D 색상 파서(모든 CSS 색상 함수를 이해함)로
+// 계산된 색상값을 rgb()로 변환해 인라인 스타일로 덮어써서 우회한다.
+function normalizeUnsupportedColors(doc: Document) {
+  const win = doc.defaultView
+  if (!win) return
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  const elements = [doc.body, ...Array.from(doc.body.querySelectorAll<HTMLElement>('*'))]
+  for (const el of elements) {
+    const computed = win.getComputedStyle(el)
+    for (const prop of COLOR_PROPS) {
+      const value = computed[prop]
+      if (!value || !value.includes('oklch') && !value.includes('oklab') && !value.includes('color-mix')) continue
+      try {
+        ctx.fillStyle = '#000' // 초기화해서 파싱 실패 시 이전 값이 남지 않게 함
+        ctx.fillStyle = value
+        el.style[prop] = ctx.fillStyle
+      } catch {
+        // 파싱 실패 시 그대로 두면 html2canvas가 기본값으로 처리한다
+      }
+    }
+  }
+}
+
 export default function SOAPReport({ onClose, symptomText, profile, urgency, systems, questions, answers, imageDataUrl }: Props) {
   const [copied, setCopied] = useState(false)
   const [imageBusy, setImageBusy] = useState<'save' | 'share' | null>(null)
@@ -111,6 +145,7 @@ export default function SOAPReport({ onClose, symptomText, profile, urgency, sys
     const canvas = await html2canvas(captureRef.current, {
       backgroundColor: '#ffffff',
       scale: 2, // 사진으로 저장/공유했을 때 글씨가 뭉개지지 않도록 고해상도로 캡처
+      onclone: (clonedDoc) => normalizeUnsupportedColors(clonedDoc),
     })
     return new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
   }
