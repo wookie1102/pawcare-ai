@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ChevronRight, RotateCcw, FileText, MapPin } from 'lucide-react'
+import { AlertTriangle, ChevronRight, RotateCcw, FileText, MapPin, Camera, Image as ImageIcon, X } from 'lucide-react'
 import LegalDisclaimer from '@/components/LegalDisclaimer'
 import SOAPReport from '@/components/SOAPReport'
 import {
@@ -37,6 +37,31 @@ type Message = {
   isResult?: boolean
   isWarning?: boolean
   urgency?: UrgencyLevel
+  imageDataUrl?: string
+}
+
+// localStorage 용량을 금방 채우지 않도록 업로드한 사진을 적당한 크기로 줄여서 저장한다.
+function compressImage(file: File, maxDimension = 1000, quality = 0.75): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(reader.error)
+    reader.onload = () => {
+      const img = new Image()
+      img.onerror = () => reject(new Error('이미지를 읽지 못했어요'))
+      img.onload = () => {
+        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { resolve(reader.result as string); return }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
+      img.src = reader.result as string
+    }
+    reader.readAsDataURL(file)
+  })
 }
 
 const EMERGENCY_DISCLAIMER =
@@ -64,8 +89,12 @@ export default function ChatPage() {
   const [showSOAP, setShowSOAP] = useState(false)
   const [followUpText, setFollowUpText] = useState('')
   const [followUpLoading, setFollowUpLoading] = useState(false)
+  const [attachedImage, setAttachedImage] = useState<string | null>(null)
+  const [imageError, setImageError] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const savedRef = useRef(false)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setProfile(getActivePet())
@@ -93,8 +122,8 @@ export default function ChatPage() {
         urgency,
         behaviorType,
         systems,
-        messages: messages.map(({ id, role, content, isResult, urgency: u }): ConsultationMessage => ({
-          id, role, content, isResult, urgency: u,
+        messages: messages.map(({ id, role, content, isResult, urgency: u, imageDataUrl }): ConsultationMessage => ({
+          id, role, content, isResult, urgency: u, imageDataUrl,
         })),
       })
     }
@@ -113,6 +142,8 @@ export default function ChatPage() {
     setBehaviorType('general_behavior')
     setShowSOAP(false)
     setFollowUpText('')
+    setAttachedImage(null)
+    setImageError('')
     savedRef.current = false
   }
 
@@ -120,8 +151,25 @@ export default function ChatPage() {
     setMessages(prev => [...prev, { id: Date.now().toString(), role: 'ai', content, ...opts }])
   }
 
-  function addUserMessage(content: string) {
-    setMessages(prev => [...prev, { id: Date.now().toString() + 'u', role: 'user', content }])
+  function addUserMessage(content: string, imageDataUrl?: string) {
+    setMessages(prev => [...prev, { id: Date.now().toString() + 'u', role: 'user', content, imageDataUrl }])
+  }
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setImageError('이미지 파일만 첨부할 수 있어요.')
+      return
+    }
+    try {
+      const compressed = await compressImage(file)
+      setAttachedImage(compressed)
+      setImageError('')
+    } catch {
+      setImageError('사진을 불러오지 못했어요. 다시 시도해주세요.')
+    }
   }
 
   function startQuestioning(text: string) {
@@ -182,7 +230,8 @@ export default function ChatPage() {
 
   function handleSymptomSubmit() {
     if (!symptomText.trim()) return
-    addUserMessage(symptomText.trim())
+    addUserMessage(symptomText.trim(), attachedImage || undefined)
+    setAttachedImage(null)
     startQuestioning(symptomText.trim())
   }
 
@@ -351,6 +400,62 @@ export default function ChatPage() {
                 rows={4}
                 className="w-full px-3 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"
               />
+
+              {mode === 'symptom' && (
+                <div className="mt-3">
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+
+                  {attachedImage ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={attachedImage}
+                        alt="첨부한 사진"
+                        className="h-20 w-20 rounded-xl object-cover border border-gray-200"
+                      />
+                      <button
+                        onClick={() => setAttachedImage(null)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 text-gray-500 text-xs font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        <Camera size={14} />
+                        사진 촬영
+                      </button>
+                      <button
+                        onClick={() => galleryInputRef.current?.click()}
+                        className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 text-gray-500 text-xs font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        <ImageIcon size={14} />
+                        갤러리에서 선택
+                      </button>
+                    </div>
+                  )}
+                  {imageError && <p className="text-[10px] text-red-400 mt-1">{imageError}</p>}
+                  <p className="text-[10px] text-gray-300 mt-1">사진은 참고용으로만 첨부돼요. AI가 사진을 분석하지는 않아요.</p>
+                </div>
+              )}
+
               <button
                 onClick={handleSymptomSubmit}
                 disabled={!symptomText.trim()}
@@ -436,9 +541,18 @@ export default function ChatPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex justify-end">
-                <div className="max-w-[80%] bg-green-500 text-white rounded-2xl rounded-tr-sm px-4 py-2.5">
-                  <p className="text-sm">{msg.content}</p>
+              <div className="flex flex-col items-end gap-1.5">
+                {msg.imageDataUrl && (
+                  <img
+                    src={msg.imageDataUrl}
+                    alt="첨부한 사진"
+                    className="max-w-[60%] rounded-2xl rounded-tr-sm border border-gray-200 object-cover"
+                  />
+                )}
+                <div className="flex justify-end">
+                  <div className="max-w-[80%] bg-green-500 text-white rounded-2xl rounded-tr-sm px-4 py-2.5">
+                    <p className="text-sm">{msg.content}</p>
+                  </div>
                 </div>
               </div>
             )}

@@ -57,6 +57,7 @@ export type ConsultationMessage = {
   content: string
   isResult?: boolean
   urgency?: 'emergency' | 'caution' | 'watch'
+  imageDataUrl?: string
 }
 
 export type ConsultationRecord = {
