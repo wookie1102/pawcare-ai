@@ -13,6 +13,7 @@ type Props = {
   systems: QuestionSystem[]
   questions: Question[]
   answers: Record<string, string>
+  imageDataUrl?: string
 }
 
 const URGENCY_LABEL: Record<UrgencyLevel, string> = {
@@ -42,7 +43,7 @@ const PLAN: Record<UrgencyLevel, string> = {
   emergency: '즉각 응급 처치 및 입원 평가 필요. 산소 공급, 정맥 수액, 모니터링 준비 요망.',
 }
 
-export default function SOAPReport({ onClose, symptomText, profile, urgency, systems, questions, answers }: Props) {
+export default function SOAPReport({ onClose, symptomText, profile, urgency, systems, questions, answers, imageDataUrl }: Props) {
   const [copied, setCopied] = useState(false)
   const [imageBusy, setImageBusy] = useState<'save' | 'share' | null>(null)
   const [actionError, setActionError] = useState('')
@@ -77,6 +78,7 @@ export default function SOAPReport({ onClose, symptomText, profile, urgency, sys
     '',
     '[S — 주관적 (Subjective)]',
     `보호자 설명: ${symptomText}`,
+    ...(imageDataUrl ? ['(보호자가 첨부한 사진 1장 — 이미지로 저장/공유 시 함께 포함돼요)'] : []),
     '',
     '[O — 객관적 (Objective)]',
     petInfo,
@@ -193,6 +195,13 @@ export default function SOAPReport({ onClose, symptomText, profile, urgency, sys
             <div className="bg-gray-50 rounded-xl p-3">
               <p className="text-xs text-gray-400 mb-0.5">보호자 설명</p>
               <p className="text-sm text-gray-800">{symptomText}</p>
+              {imageDataUrl && (
+                <img
+                  src={imageDataUrl}
+                  alt="보호자가 첨부한 사진"
+                  className="mt-2 max-h-40 rounded-lg border border-gray-200 object-cover"
+                />
+              )}
             </div>
           </section>
 

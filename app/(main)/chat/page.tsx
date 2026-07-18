@@ -653,6 +653,7 @@ export default function ChatPage() {
           systems={systems}
           questions={questions}
           answers={answers}
+          imageDataUrl={messages.find(m => m.role === 'user' && m.imageDataUrl)?.imageDataUrl}
         />
       )}
     </div>
