@@ -27,6 +27,7 @@ const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
 export default function KakaoMap({ lat, lng, hospitals }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
+  const markersRef = useRef<any[]>([])
   const [mapReady, setMapReady] = useState(false)
 
   // SDK 로드 + 지도 초기화
@@ -74,11 +75,18 @@ export default function KakaoMap({ lat, lng, hospitals }: Props) {
 
   // 병원 마커 — 지도 준비 후에만 실행
   useEffect(() => {
-    if (!mapReady || !mapRef.current || hospitals.length === 0) return
+    if (!mapReady || !mapRef.current) return
+
+    // hospitals가 바뀔 때마다(새로고침 등) 이전 마커를 먼저 지워야 지도에 마커가 계속 쌓이지 않는다.
+    markersRef.current.forEach(m => m.setMap(null))
+    markersRef.current = []
+
+    if (hospitals.length === 0) return
 
     hospitals.forEach(h => {
       const pos = new window.kakao.maps.LatLng(Number(h.y), Number(h.x))
       const marker = new window.kakao.maps.Marker({ map: mapRef.current, position: pos })
+      markersRef.current.push(marker)
       const iw = new window.kakao.maps.InfoWindow({
         content: `<div style="padding:6px 10px;font-size:12px;font-weight:600;white-space:nowrap">${h.place_name}</div>`,
       })
